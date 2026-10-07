@@ -6,10 +6,37 @@
   <title>Glio - Cellular Hub & Event System</title>
   <style>
     :root {
+      /* Default Light Microscope Theme (Kurzgesagt Bright-Field) */
+      --bg-dark: #e8ecf2;
+      --bg-cytoplasm: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-panel-transparent: rgba(255, 255, 255, 0.88);
+      --bg-card: rgba(255, 255, 255, 0.94);
+      --border-color: rgba(15, 23, 42, 0.15);
+      --border-bright: rgba(14, 165, 233, 0.45);
+
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+
+      --accent-cyan: #0284c7;
+      --accent-cyan-glow: rgba(2, 132, 199, 0.25);
+      --accent-amber: #d97706;
+      --accent-emerald: #059669;
+      --accent-rose: #e11d48;
+      --accent-violet: #7c3aed;
+
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body.dark-mode {
+      /* Dark Microscope Theme */
       --bg-dark: #090a0f;
+      --bg-cytoplasm: #090a0f;
       --bg-panel: #12151e;
-      --bg-panel-transparent: rgba(18, 21, 30, 0.75);
-      --bg-card: rgba(22, 27, 38, 0.85);
+      --bg-panel-transparent: rgba(18, 21, 30, 0.82);
+      --bg-card: rgba(22, 27, 38, 0.90);
       --border-color: rgba(255, 255, 255, 0.12);
       --border-bright: rgba(0, 240, 255, 0.35);
 
@@ -23,9 +50,6 @@
       --accent-emerald: #10b981;
       --accent-rose: #f43f5e;
       --accent-violet: #a855f7;
-
-      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', monospace;
-      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
 
     * {
@@ -97,6 +121,30 @@
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .theme-toggle {
+      background: rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(0, 0, 0, 0.1);
+      border-color: var(--accent-cyan);
+    }
+
+    body.dark-mode .theme-toggle {
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .brand-icon {
@@ -570,6 +618,10 @@
         </div>
       </div>
       <div class="header-controls">
+        <button class="theme-toggle" id="btn-theme-toggle">
+          <span id="theme-icon">☀️</span>
+          <span id="theme-text">LIGHT MODE</span>
+        </button>
         <label for="event-source-select" style="color: var(--text-muted); font-size: 11px;">SOURCE:</label>
         <select id="event-source-select" class="select-input">
           <!-- Populated dynamically -->
@@ -646,6 +698,7 @@
       lastFrameTime: performance.now(),
       frameCount: 0,
       fpsTimer: performance.now(),
+      isDarkMode: false,
       isStartupComplete: false,
       isFocused: false,
       focusedEntity: null,
@@ -657,6 +710,24 @@
       vesicles: [],
       gliosomes: []
     };
+
+    // Theme Switcher Logic
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+
+    themeBtn.addEventListener('click', () => {
+      state.isDarkMode = !state.isDarkMode;
+      if (state.isDarkMode) {
+        document.body.classList.add('dark-mode');
+        themeIcon.innerText = '🌙';
+        themeText.innerText = 'DARK MODE';
+      } else {
+        document.body.classList.remove('dark-mode');
+        themeIcon.innerText = '☀️';
+        themeText.innerText = 'LIGHT MODE';
+      }
+    });
 
     // Canvas Setup
     const canvas = document.getElementById('gl-canvas');
@@ -700,6 +771,30 @@
       return points;
     }
 
+    // Draw Cytoplasm Granules (Floating Ribosomes, Solutes, Nutrients)
+    function drawCytoplasmGranules(time) {
+      ctx.save();
+      const numGranules = 45;
+      const w = state.canvasSize.width;
+      const h = state.canvasSize.height;
+
+      for (let i = 0; i < numGranules; i++) {
+        const seed = i * 997;
+        const xBase = ((seed * 13) % w);
+        const yBase = ((seed * 37) % h);
+
+        const x = xBase + Math.sin(time * 0.4 + i) * 15;
+        const y = yBase + Math.cos(time * 0.3 + i) * 15;
+        const r = 1.5 + (i % 3);
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = state.isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // Draw Cell Membrane (Cell Wall)
     function drawCellMembrane(time) {
       const points = getMembranePath(time);
@@ -717,8 +812,13 @@
       ctx.closePath();
 
       const grad = ctx.createLinearGradient(state.canvasSize.width * 0.8, 0, state.canvasSize.width, 0);
-      grad.addColorStop(0, 'rgba(0, 240, 255, 0.03)');
-      grad.addColorStop(1, 'rgba(16, 185, 129, 0.08)');
+      if (state.isDarkMode) {
+        grad.addColorStop(0, 'rgba(0, 240, 255, 0.03)');
+        grad.addColorStop(1, 'rgba(16, 185, 129, 0.08)');
+      } else {
+        grad.addColorStop(0, 'rgba(2, 132, 199, 0.05)');
+        grad.addColorStop(1, 'rgba(5, 150, 105, 0.12)');
+      }
       ctx.fillStyle = grad;
       ctx.fill();
 
@@ -730,10 +830,8 @@
         const yc = (points[i].y + points[i + 1].y) / 2;
         ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
       }
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+      ctx.strokeStyle = state.isDarkMode ? 'rgba(0, 240, 255, 0.4)' : 'rgba(2, 132, 199, 0.6)';
       ctx.lineWidth = 3;
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 12;
       ctx.stroke();
 
       // Inner lipid line
@@ -744,9 +842,8 @@
         const yc = (points[i].y + points[i + 1].y) / 2;
         ctx.quadraticCurveTo(points[i].x + 8, points[i].y, xc, yc);
       }
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+      ctx.strokeStyle = state.isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(5, 150, 105, 0.4)';
       ctx.lineWidth = 1.5;
-      ctx.shadowBlur = 0;
       ctx.stroke();
 
       ctx.restore();
@@ -913,6 +1010,16 @@ function rotateLogs() {
       }
     ];
 
+    // --- KURZGESAGT MOLECULAR FOLDING ENGINE (SCRIPT -> AMINO ACIDS -> PUZZLE PROTEIN) ---
+
+    const AMINO_TYPES = [
+      { type: 'hydrophobic', color: '#0284c7', label: 'Val' }, // Blue
+      { type: 'charged_pos', color: '#7c3aed', label: 'Lys' }, // Purple
+      { type: 'polar', color: '#059669', label: 'Ser' },       // Emerald
+      { type: 'acidic', color: '#e11d48', label: 'Glu' },      // Red
+      { type: 'aromatic', color: '#d97706', label: 'Phe' }     // Amber
+    ];
+
     // Simple String Hash Function
     function hashString(str) {
       let hash = 0;
@@ -923,37 +1030,57 @@ function rotateLogs() {
       return Math.abs(hash);
     }
 
-    // Generate Organic Fourier Harmonics Protein Path
-    function generateProteinShape(cx, cy, baseRadius, seedHash, time, status) {
-      const numLoves = 5 + (seedHash % 4); // 5 to 8 organic lobes
-      const points = [];
-      const totalSteps = 60;
+    // Convert Script Text into a Folded Amino Acid Chain & 3D Molecular Block Geometry
+    function foldScriptToProteinGeometry(scriptText, name) {
+      const seed = hashString(scriptText + name);
+      const lines = scriptText.split('\n').filter(l => l.trim().length > 0);
+      const chainLength = Math.min(18, Math.max(8, lines.length + Math.floor(scriptText.length / 25)));
 
-      const harm1Factor = (seedHash % 7) * 0.08 + 0.15;
-      const harm2Factor = ((seedHash >> 3) % 5) * 0.05 + 0.08;
-      const speed = status === 'warning' ? 2.5 : 1.0;
-
-      for (let i = 0; i < totalSteps; i++) {
-        const angle = (i / totalSteps) * Math.PI * 2;
-        // Fourier harmonic sum for complex organic protein boundary
-        const r1 = Math.sin(angle * numLoves + time * speed + seedHash) * harm1Factor * baseRadius;
-        const r2 = Math.cos(angle * (numLoves / 2) - time * 0.8 * speed) * harm2Factor * baseRadius;
-        const radius = baseRadius + r1 + r2;
-
-        const x = cx + Math.cos(angle) * radius;
-        const y = cy + Math.sin(angle) * radius;
-        points.push({ x, y });
+      // Generate sequence of amino acid blocks
+      const aminoSequence = [];
+      for (let i = 0; i < chainLength; i++) {
+        const charCode = scriptText.charCodeAt(i % scriptText.length) || 65;
+        const typeIdx = (charCode + i + seed) % AMINO_TYPES.length;
+        aminoSequence.push(AMINO_TYPES[typeIdx]);
       }
-      return points;
+
+      // Generate fixed 2D folded puzzle domain shapes (3-5 overlapping molecular blocks)
+      const numDomains = 3 + (seed % 3); // 3 to 5 puzzle blocks
+      const domains = [];
+      const baseAngleStep = (Math.PI * 2) / numDomains;
+
+      for (let i = 0; i < numDomains; i++) {
+        const angle = i * baseAngleStep + ((seed >> (i * 2)) % 7) * 0.1;
+        const dist = 14 + ((seed >> i) % 12);
+        const domainRadius = 18 + ((seed >> (i + 3)) % 10);
+        const amino = aminoSequence[i % aminoSequence.length];
+
+        domains.push({
+          relX: Math.cos(angle) * dist,
+          relY: Math.sin(angle) * dist,
+          radius: domainRadius,
+          color: amino.color,
+          type: amino.type,
+          notchType: (seed + i) % 3 // 0: rounded tab, 1: socket, 2: smooth
+        });
+      }
+
+      return {
+        seed,
+        chainLength,
+        aminoSequence,
+        domains
+      };
     }
 
-    // Initialize Gliosomes in State
+    // Initialize Gliosomes in State with Folded Protein Geometry
     function initGliosomes() {
       const w = state.canvasSize.width;
       const h = state.canvasSize.height;
 
       state.gliosomes = defaultGliosomes.map((g) => {
         const scriptHash = '#' + hashString(g.script + g.name).toString(16).substring(0, 6);
+        const folding = foldScriptToProteinGeometry(g.script, g.name);
         return {
           ...g,
           x: w * g.xRel,
@@ -961,9 +1088,10 @@ function rotateLogs() {
           baseX: w * g.xRel,
           baseY: h * g.yRel,
           driftAngle: Math.random() * Math.PI * 2,
-          radius: 36,
+          radius: 40,
           hash: scriptHash,
-          seedHash: hashString(g.name + scriptHash)
+          folding: folding,
+          seedHash: folding.seed
         };
       });
 
@@ -993,69 +1121,76 @@ function rotateLogs() {
       });
     }
 
-    // Draw Individual Gliosome
+    // Draw Individual Gliosome as a Kurzgesagt-inspired 3D Molecular Machine (Fixed Folded Puzzle Geometry)
     function drawGliosome(g, time) {
       ctx.save();
 
       const isHovered = state.hoveredEntity && state.hoveredEntity.id === g.id;
       const isFocused = state.focusedEntity && state.focusedEntity.id === g.id;
 
-      // Outer Aura Glow
-      const glowGrad = ctx.createRadialGradient(g.x, g.y, g.radius * 0.4, g.x, g.y, g.radius * 2.2);
-      glowGrad.addColorStop(0, g.color + '40');
-      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glowGrad;
+      // Soft Outer Halo
+      const haloGrad = ctx.createRadialGradient(g.x, g.y, g.radius * 0.3, g.x, g.y, g.radius * 1.8);
+      haloGrad.addColorStop(0, g.color + '33');
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.arc(g.x, g.y, g.radius * 2.2, 0, Math.PI * 2);
+      ctx.arc(g.x, g.y, g.radius * 1.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Generate Organic Protein Path
-      const points = generateProteinShape(g.x, g.y, g.radius, g.seedHash, time, g.status);
+      // Render Folded Molecular Subdomains (Puzzle Piece Blocks)
+      if (g.folding && g.folding.domains) {
+        g.folding.domains.forEach((dom) => {
+          const dx = g.x + dom.relX;
+          const dy = g.y + dom.relY;
 
-      // Draw Organic Protein Body
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length - 1; i++) {
-        const xc = (points[i].x + points[i + 1].x) / 2;
-        const yc = (points[i].y + points[i + 1].y) / 2;
-        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+          // Domain Block Body
+          ctx.beginPath();
+          ctx.arc(dx, dy, dom.radius, 0, Math.PI * 2);
+          ctx.fillStyle = dom.color;
+          ctx.fill();
+
+          ctx.strokeStyle = state.isDarkMode ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // Puzzle Notch / Binding Pocket Detail
+          if (dom.notchType === 0) { // Outward rounded Lego/puzzle tab
+            ctx.beginPath();
+            ctx.arc(dx + dom.radius * 0.7, dy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = dom.color;
+            ctx.fill();
+            ctx.stroke();
+          } else if (dom.notchType === 1) { // Inward socket notch
+            ctx.beginPath();
+            ctx.arc(dx - dom.radius * 0.6, dy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = state.isDarkMode ? '#12151e' : '#f1f5f9';
+            ctx.fill();
+            ctx.stroke();
+          }
+        });
       }
-      ctx.closePath();
 
-      // Body Gradient Fill
-      const bodyGrad = ctx.createRadialGradient(g.x - 10, g.y - 10, 5, g.x, g.y, g.radius * 1.2);
-      bodyGrad.addColorStop(0, '#1c2638');
-      bodyGrad.addColorStop(0.7, '#0d131f');
-      bodyGrad.addColorStop(1, g.color + '33');
-      ctx.fillStyle = bodyGrad;
-      ctx.fill();
-
-      // Stroke Contour Border
-      ctx.strokeStyle = isHovered || isFocused ? '#00f0ff' : g.color;
-      ctx.lineWidth = isHovered || isFocused ? 2.5 : 1.5;
+      // Highlight Ring when Hovered or Focused
       if (isHovered || isFocused) {
-        ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, g.radius + 8, 0, Math.PI * 2);
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-cyan').trim() || '#0284c7';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
-      ctx.stroke();
-
-      // Inner Core Binding Spot
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.arc(g.x, g.y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = g.color;
-      ctx.fill();
 
       // Sleek Monospaced Label
       ctx.font = '600 10px "SF Mono", monospace';
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = state.isDarkMode ? '#ffffff' : '#0f172a';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(g.name, g.x, g.y + g.radius + 12);
+      ctx.fillText(g.name, g.x, g.y + g.radius + 14);
 
       ctx.font = '9px "SF Mono", monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.fillText(g.hash, g.x, g.y + g.radius + 25);
+      ctx.fillStyle = state.isDarkMode ? 'rgba(255,255,255,0.5)' : '#64748b';
+      ctx.fillText(g.hash + ' (' + (g.folding ? g.folding.chainLength : 0) + ' aa)', g.x, g.y + g.radius + 27);
 
       ctx.restore();
     }
@@ -1270,12 +1405,13 @@ function rotateLogs() {
           </div>
         `;
 
-        // Code input listener for live protein re-synthesis
+        // Code input listener for live protein re-synthesis and folding
         const codeInput = document.getElementById('pop-code-input');
         codeInput.addEventListener('input', () => {
           entity.script = codeInput.value;
           entity.hash = '#' + hashString(entity.script + entity.name).toString(16).substring(0, 6);
-          entity.seedHash = hashString(entity.name + entity.hash);
+          entity.folding = foldScriptToProteinGeometry(entity.script, entity.name);
+          entity.seedHash = entity.folding.seed;
         });
 
         document.getElementById('pop-btn-save').onclick = () => {
@@ -1528,6 +1664,9 @@ function rotateLogs() {
 
       // Clear Canvas
       ctx.clearRect(0, 0, state.canvasSize.width, state.canvasSize.height);
+
+      // Render Cytoplasm Granules
+      drawCytoplasmGranules(state.time);
 
       // Update positions
       updateGliosomePositions(dt);
