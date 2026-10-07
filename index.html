@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Isometric Vector Shape Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar and grid transitions */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .grid-cell-active {
+      ring-width: 2px;
+      ring-color: #3b82f6;
+      border-color: #3b82f6 !important;
+      background-color: #eff6ff !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- Top Header Navigation -->
+  <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-30">
+    <div class="flex items-center space-x-3">
+      <div class="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-slate-900">IsoFusion Studio</h1>
+        <p class="text-xs text-slate-500">Color-Based Region Fusion Isometric Vector Generator</p>
+      </div>
+    </div>
+
+    <!-- Quick Mode Toggle Header Controls -->
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <button id="modeFusedBtn" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <span>Fused Mode</span>
+        </button>
+        <button id="modeUnfusedBtn" class="px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm bg-white text-blue-600 transition-all flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          <span>Grid Mode</span>
+        </button>
+      </div>
+
+      <button id="randomizeAllBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium rounded-xl shadow-sm transition flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        <span>Randomize Seed</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main App Layout -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Left Controls Sidebar -->
+    <aside class="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto shrink-0 shadow-sm">
+      <div class="p-5 space-y-6">
+
+        <!-- Seed Input Section -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Seed String</label>
+          <div class="flex space-x-2">
+            <input type="text" id="seedInput" value="isofusion-core" class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono">
+            <button id="regenSeedBtn" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition" title="New Random Seed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid & Voxel Dimensions -->
+        <div class="space-y-4 pt-2 border-t border-slate-100">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Grid & Structure</h3>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label for="gridSizeRange" class="text-xs font-semibold text-slate-700">Grid Size (3D)</label>
+              <span id="gridSizeVal" class="text-xs font-bold text-blue-600 font-mono">4 x 4 x 4</span>
+            </div>
+            <input type="range" id="gridSizeRange" min="3" max="7" value="4" step="1" class="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label for="densityRange" class="text-xs font-semibold text-slate-700">Voxel Fill Density</label>
+              <span id="densityVal" class="text-xs font-bold text-blue-600 font-mono">55%</span>
+            </div>
+            <input type="range" id="densityRange" min="25" max="85" value="55" step="5" class="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer">
+          </div>
+
+          <div>
+            <label for="symmetrySelect" class="block text-xs font-semibold text-slate-700 mb-1">Symmetry Rule</label>
+            <select id="symmetrySelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="none" selected>None (Organic)</option>
+              <option value="mirror-x">X-Axis Mirror</option>
+              <option value="mirror-xy">XY Dual Mirror</option>
+              <option value="rotational">Rotational (4-Fold)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Palette & Color Assignment -->
+        <div class="space-y-4 pt-2 border-t border-slate-100">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Color & Palette</h3>
+
+          <div>
+            <label for="paletteSelect" class="block text-xs font-semibold text-slate-700 mb-1">Color Palette</label>
+            <select id="paletteSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="cyberpunk" selected>Cyberpunk Neon</option>
+              <option value="pastel">Pastel Sunset</option>
+              <option value="emerald">Emerald Forest</option>
+
+              <option value="tech">Monochrome Tech</option>
+              <option value="warmth">Warm Isometric</option>
+              <option value="ocean">Deep Ocean</option>
+            </select>
+          </div>
+
+          <!-- Active Palette Swatches Preview -->
+          <div id="paletteSwatches" class="flex h-6 rounded-lg overflow-hidden border border-slate-200 shadow-inner">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <div>
+            <label for="colorStrategySelect" class="block text-xs font-semibold text-slate-700 mb-1">Color Grouping Strategy</label>
+            <select id="colorStrategySelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="height">Height Bands (Z-Layers)</option>
+              <option value="radial" selected>Radial Distance</option>
+              <option value="clusters">Connected Clusters</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="fusionTypeSelect" class="block text-xs font-semibold text-slate-700 mb-1">3D Fusion Awareness</label>
+            <select id="fusionTypeSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="coplanar" selected>3D Coplanar Planes (Strict 3D)</option>
+              <option value="projection">2D Flat Projection Union</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stroke & Outline Controls -->
+        <div class="space-y-4 pt-2 border-t border-slate-100">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Stroke & Style</h3>
+
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">Show Outline Strokes</span>
+            <input type="checkbox" id="strokeToggle" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 accent-blue-600">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label for="strokeWidthRange" class="text-xs font-semibold text-slate-700">Stroke Width</label>
+              <span id="strokeWidthVal" class="text-xs font-bold text-blue-600 font-mono">1.2px</span>
+            </div>
+            <input type="range" id="strokeWidthRange" min="0.5" max="3.5" value="1.2" step="0.1" class="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer">
+          </div>
+
+          <div>
+            <label for="strokeColorSelect" class="block text-xs font-semibold text-slate-700 mb-1">Stroke Color</label>
+            <select id="strokeColorSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="#0f172a" selected>Dark Slate (#0f172a)</option>
+              <option value="#334155">Slate (#334155)</option>
+              <option value="#ffffff">White (#ffffff)</option>
+              <option value="auto">Auto Contrast Shade</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Center Workspace & Matrix View -->
+    <main class="flex-1 flex flex-col overflow-y-auto p-6 space-y-6 bg-slate-50">
+
+      <!-- View Selector & Title -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">4x4 Matrix Variations</h2>
+          <p class="text-xs text-slate-500">16 deterministic shape variations generated from seed. Click any cell to inspect in detail.</p>
+        </div>
+        <div class="text-xs text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm flex items-center space-x-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Mode: <strong id="currentModeLabel" class="text-slate-800 font-semibold">Grid Mode (Unfused)</strong></span>
+        </div>
+      </div>
+
+      <!-- 4x4 Grid Matrix Container -->
+      <div id="gridMatrix" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <!-- 16 SVG Cells generated dynamically -->
+      </div>
+
+    </main>
+
+    <!-- Right Inspector Panel -->
+    <aside class="w-96 bg-white border-l border-slate-200 flex flex-col overflow-y-auto shrink-0 shadow-sm">
+      <div class="p-6 flex flex-col h-full space-y-6">
+
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Inspector View</h2>
+            <p id="inspectorCellTitle" class="text-xs text-slate-500 font-mono">Cell Variation #1</p>
+          </div>
+          <span id="inspectorBadge" class="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-600 rounded-md border border-blue-100">Selected</span>
+        </div>
+
+        <!-- Large Main Inspector Preview Frame -->
+        <div class="bg-gradient-to-b from-slate-50 to-slate-100/60 border border-slate-200 rounded-2xl p-6 flex items-center justify-center min-h-[300px] shadow-inner relative group">
+          <div id="inspectorSvgContainer" class="w-full h-64 flex items-center justify-center">
+            <!-- Enlarged Interactive SVG rendered here -->
+          </div>
+        </div>
+
+        <!-- Voxel Statistics & Info Box -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Shape Statistics</h3>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+              <span class="text-slate-400 block mb-0.5">Active Voxels</span>
+              <span id="statVoxelCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+              <span class="text-slate-400 block mb-0.5">Color Clusters</span>
+              <span id="statClusterCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+              <span class="text-slate-400 block mb-0.5">Visible Faces</span>
+              <span id="statFaceCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+              <span class="text-slate-400 block mb-0.5">Boundary Loops</span>
+              <span id="statLoopCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Information & Algorithm Overview Card -->
+        <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-4 text-xs text-blue-900 space-y-2">
+          <div class="flex items-center space-x-2 font-semibold text-blue-800">
+            <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 1 9 0 0118 0z"></path></svg>
+            <span>Color Region Fusion Logic</span>
+          </div>
+          <p class="leading-relaxed text-blue-800/80">
+            Adjacent voxels with matching color IDs are grouped into Connected Component Clusters. Internal face borders are automatically cancelled, merging coplanar planes into unified 2D vector boundaries with continuous linear gradients.
+          </p>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. PRNG & SEEDING ALGORITHMS (cyrb128 + sfc32)
+    // =========================================================================
+    function cyrb128(str) {
+      let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+      for (let i = 0, k; i < str.length; i++) {
+        k = str.charCodeAt(i);
+        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+        h2 = h3 ^ Math.imul(h2 ^ k, 286986023);
+        h3 = h4 ^ Math.imul(h4 ^ k, 951274213);
+        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+      }
+      h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+      h2 = Math.imul(h4 ^ (h2 >>> 22), 286986023);
+      h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+      h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+      return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
+    }
+
+    function sfc32(a, b, c, d) {
+      return function() {
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        let t = (a + b | 0) + d | 0;
+        d = d + 1 | 0;
+        a = b ^ b >>> 9;
+        b = c + (c << 3) | 0;
+        c = c << 21 | c >>> 11;
+        c = c + t | 0;
+        return (t >>> 0) / 4294967296;
+      };
+    }
+
+    function createRNG(seedStr) {
+      const seed = cyrb128(seedStr);
+      return sfc32(seed[0], seed[1], seed[2], seed[3]);
+    }
+
+    // =========================================================================
+    // 2. PALETTES DEFINITION
+    // =========================================================================
+    const PALETTES = {
+      cyberpunk: {
+        name: "Cyberpunk Neon",
+        colors: [
+          { stop1: "#ff007f", stop2: "#7928ca" },
+          { stop1: "#00f2fe", stop2: "#4facfe" },
+          { stop1: "#f9d423", stop2: "#ff4e50" },
+          { stop1: "#00b09b", stop2: "#96c93d" }
+        ]
+      },
+      pastel: {
+        name: "Pastel Sunset",
+        colors: [
+          { stop1: "#ff9a9e", stop2: "#fecfef" },
+          { stop1: "#a1c4fd", stop2: "#c2e9fb" },
+          { stop1: "#f6d365", stop2: "#fda085" },
+          { stop1: "#d4fc79", stop2: "#96e6a1" }
+        ]
+      },
+      emerald: {
+        name: "Emerald Forest",
+        colors: [
+          { stop1: "#11998e", stop2: "#38ef7d" },
+          { stop1: "#0575e6", stop2: "#00f260" },
+          { stop1: "#8e2de2", stop2: "#4a00e0" },
+          { stop1: "#f12711", stop2: "#f5af19" }
+        ]
+      },
+      tech: {
+        name: "Monochrome Tech",
+        colors: [
+          { stop1: "#243b55", stop2: "#141e30" },
+          { stop1: "#4b6cb7", stop2: "#182848" },
+          { stop1: "#8e9eab", stop2: "#eef2f3" },
+          { stop1: "#3a6073", stop2: "#3a7bd5" }
+        ]
+      },
+      warmth: {
+        name: "Warm Isometric",
+        colors: [
+          { stop1: "#f83600", stop2: "#f9d423" },
+          { stop1: "#e14ebe", stop2: "#f05654" },
+          { stop1: "#ff512f", stop2: "#dd2476" },
+          { stop1: "#ff8c00", stop2: "#e52d27" }
+        ]
+      },
+      ocean: {
+        name: "Deep Ocean",
+        colors: [
+          { stop1: "#2b5876", stop2: "#4e4376" },
+          { stop1: "#00c6ff", stop2: "#0072ff" },
+          { stop1: "#20002c", stop2: "#cbb4d4" },
+          { stop1: "#13547a", stop2: "#80d0c7" }
+        ]
+      }
+    };
+
+    // =========================================================================
+    // 3. APPLICATION STATE & INITIALIZATION
+    // =========================================================================
+    const state = {
+      seed: "isofusion-core",
+      gridSize: 4,
+      density: 0.55,
+      symmetry: "none",
+      paletteKey: "cyberpunk",
+      colorStrategy: "radial",
+      fusionType: "coplanar",
+      isFused: false,
+      showStroke: false,
+      strokeWidth: 1.2,
+      strokeColor: "#0f172a",
+      selectedCellIndex: 0
+    };
+
+    // DOM Elements
+    const seedInput = document.getElementById("seedInput");
+    const regenSeedBtn = document.getElementById("regenSeedBtn");
+    const randomizeAllBtn = document.getElementById("randomizeAllBtn");
+
+    const gridSizeRange = document.getElementById("gridSizeRange");
+    const gridSizeVal = document.getElementById("gridSizeVal");
+    const densityRange = document.getElementById("densityRange");
+    const densityVal = document.getElementById("densityVal");
+    const symmetrySelect = document.getElementById("symmetrySelect");
+
+    const paletteSelect = document.getElementById("paletteSelect");
+    const paletteSwatches = document.getElementById("paletteSwatches");
+    const colorStrategySelect = document.getElementById("colorStrategySelect");
+    const fusionTypeSelect = document.getElementById("fusionTypeSelect");
+
+    const strokeToggle = document.getElementById("strokeToggle");
+    const strokeWidthRange = document.getElementById("strokeWidthRange");
+    const strokeWidthVal = document.getElementById("strokeWidthVal");
+    const strokeColorSelect = document.getElementById("strokeColorSelect");
+
+    const modeFusedBtn = document.getElementById("modeFusedBtn");
+    const modeUnfusedBtn = document.getElementById("modeUnfusedBtn");
+    const currentModeLabel = document.getElementById("currentModeLabel");
+
+    const gridMatrix = document.getElementById("gridMatrix");
+    const inspectorSvgContainer = document.getElementById("inspectorSvgContainer");
+    const inspectorCellTitle = document.getElementById("inspectorCellTitle");
+
+    const statVoxelCount = document.getElementById("statVoxelCount");
+    const statClusterCount = document.getElementById("statClusterCount");
+    const statFaceCount = document.getElementById("statFaceCount");
+    const statLoopCount = document.getElementById("statLoopCount");
+
+    // =========================================================================
+    // 4. VOXEL GRID PROCEDURAL GENERATION & SYMMETRY
+    // =========================================================================
+
+    /**
+     * Generates a 3D grid of voxels deterministically using the given RNG.
+     */
+    function generateVoxelGrid(N, density, symmetry, rng) {
+      const grid = Array.from({ length: N }, () =>
+        Array.from({ length: N }, () =>
+          Array.from({ length: N }, () => null)
+        )
+      );
+
+      // Create connected structure starting from base/center
+      const activeVoxels = [];
+      const targetCount = Math.max(3, Math.floor(N * N * N * density));
+
+      // Start seeds at bottom center
+      const center = Math.floor(N / 2);
+      const queue = [[center, center, 0]];
+      const visited = new Set();
+      visited.add(`${center},${center},0`);
+
+      while (queue.length > 0 && activeVoxels.length < targetCount) {
+        // Pick from queue with slight randomness
+        const idx = Math.floor(rng() * queue.length);
+        const [x, y, z] = queue.splice(idx, 1)[0];
+
+        // Decide whether to activate voxel
+        if (rng() < 0.85 || activeVoxels.length < 3) {
+          activeVoxels.push([x, y, z]);
+
+          // Explore neighbors (6-connected)
+          const dirs = [
+            [1,0,0], [-1,0,0],
+            [0,1,0], [0,-1,0],
+            [0,0,1], [0,0,-1]
+          ];
+
+          // Shuffle dirs
+          for (let i = dirs.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+          }
+
+          for (const [dx, dy, dz] of dirs) {
+            const nx = x + dx, ny = y + dy, nz = z + dz;
+            if (nx >= 0 && nx < N && ny >= 0 && ny < N && nz >= 0 && nz < N) {
+              const key = `${nx},${ny},${nz}`;
+              if (!visited.has(key)) {
+                visited.add(key);
+                queue.push([nx, ny, nz]);
+              }
+            }
+          }
+        }
+      }
+
+      // Populate grid with base boolean presence
+      const rawGrid = Array.from({ length: N }, () =>
+        Array.from({ length: N }, () =>
+          Array.from({ length: N }, () => false)
+        )
+      );
+
+      for (const [x, y, z] of activeVoxels) {
+        rawGrid[x][y][z] = true;
+      }
+
+      // Apply Symmetry to rawGrid
+      const finalGrid = Array.from({ length: N }, () =>
+        Array.from({ length: N }, () =>
+          Array.from({ length: N }, () => false)
+        )
+      );
+
+      for (let x = 0; x < N; x++) {
+        for (let y = 0; y < N; y++) {
+          for (let z = 0; z < N; z++) {
+            if (rawGrid[x][y][z]) {
+              finalGrid[x][y][z] = true;
+
+              if (symmetry === "mirror-x") {
+                finalGrid[N - 1 - x][y][z] = true;
+              } else if (symmetry === "mirror-xy") {
+                finalGrid[N - 1 - x][y][z] = true;
+                finalGrid[x][N - 1 - y][z] = true;
+                finalGrid[N - 1 - x][N - 1 - y][z] = true;
+              } else if (symmetry === "rotational") {
+                finalGrid[x][y][z] = true;
+                finalGrid[N - 1 - y][x][z] = true;
+                finalGrid[N - 1 - x][N - 1 - y][z] = true;
+                finalGrid[y][N - 1 - x][z] = true;
+              }
+            }
+          }
+        }
+      }
+
+      return finalGrid;
+    }
+
+    /**
+     * Assigns color IDs (0..palette.length-1) to each active voxel based on strategy.
+     */
+    function assignVoxelColors(grid, N, strategy, paletteSize, rng) {
+      const colorGrid = Array.from({ length: N }, () =>
+        Array.from({ length: N }, () =>
+          Array.from({ length: N }, () => -1)
+        )
+      );
+
+      const center = (N - 1) / 2;
+
+      for (let x = 0; x < N; x++) {
+        for (let y = 0; y < N; y++) {
+          for (let z = 0; z < N; z++) {
+            if (!grid[x][y][z]) continue;
+
+            let colorIdx = 0;
+
+            if (strategy === "height") {
+              // Z-based height bands
+              const normalizedZ = z / Math.max(1, N - 1);
+              colorIdx = Math.min(paletteSize - 1, Math.floor(normalizedZ * paletteSize));
+            } else if (strategy === "radial") {
+              // Radial distance from 3D center
+              const dx = x - center;
+              const dy = y - center;
+              const dz = z - center;
+              const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+              const maxDist = Math.sqrt(3 * center * center) || 1;
+              colorIdx = Math.min(paletteSize - 1, Math.floor((dist / maxDist) * paletteSize));
+            } else if (strategy === "clusters") {
+              // Hash / cluster based
+              const hash = (x * 7 + y * 13 + z * 19) % paletteSize;
+              colorIdx = hash;
+            }
+
+            colorGrid[x][y][z] = colorIdx;
+          }
+        }
+      }
+
+      return colorGrid;
+    }
+
+    // =========================================================================
+    // 5. CONNECTED COMPONENT LABELING (3D CCL)
+    // =========================================================================
+
+    /**
+     * Labels each 3D voxel with a unique cluster ID for connected component fusion.
+     */
+    function labelConnectedComponents(grid, colorGrid, N) {
+      const clusterGrid = Array.from({ length: N }, () =>
+        Array.from({ length: N }, () =>
+          Array.from({ length: N }, () => -1)
+        )
+      );
+
+      let currentClusterId = 0;
+      const clustersInfo = []; // { id, colorIdx }
+
+      for (let x = 0; x < N; x++) {
+        for (let y = 0; y < N; y++) {
+          for (let z = 0; z < N; z++) {
+            if (grid[x][y][z] && clusterGrid[x][y][z] === -1) {
+              const colorIdx = colorGrid[x][y][z];
+              const clusterId = currentClusterId++;
+              clustersInfo.push({ id: clusterId, colorIdx });
+
+              // BFS to flood fill connected component with same colorIdx
+              const queue = [[x, y, z]];
+              clusterGrid[x][y][z] = clusterId;
+
+              while (queue.length > 0) {
+                const [cx, cy, cz] = queue.shift();
+
+                const neighbors = [
+                  [cx + 1, cy, cz], [cx - 1, cy, cz],
+                  [cx, cy + 1, cz], [cx, cy - 1, cz],
+                  [cx, cy, cz + 1], [cx, cy, cz - 1]
+                ];
+
+                for (const [nx, ny, nz] of neighbors) {
+                  if (nx >= 0 && nx < N && ny >= 0 && ny < N && nz >= 0 && nz < N) {
+                    if (grid[nx][ny][nz] && colorGrid[nx][ny][nz] === colorIdx && clusterGrid[nx][ny][nz] === -1) {
+                      clusterGrid[nx][ny][nz] = clusterId;
+                      queue.push([nx, ny, nz]);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return { clusterGrid, clustersInfo };
+    }
+
+    // =========================================================================
+    // 6. ISOMETRIC PROJECTION & BOUNDARY CONTOUR EXTRACTION
+    // =========================================================================
+
+    /**
+     * 3D Grid Coordinate to 2D Isometric Projection
+     */
+    function project3D(x, y, z, tileSize) {
+      const cos30 = 0.8660254037844386; // Math.cos(Math.PI / 6)
+      const sin30 = 0.5;                // Math.sin(Math.PI / 6)
+
+      const px = (x - y) * tileSize * cos30;
+      const py = (x + y) * tileSize * sin30 - z * tileSize;
+
+      return [px, py];
+    }
+
+    /**
+     * Round coordinate to avoid floating point precision issues in edge matching
+     */
+    function formatPt(pt) {
+      return `${pt[0].toFixed(3)},${pt[1].toFixed(3)}`;
+    }
+
+    /**
+     * Main Renderer Function: Renders SVG string for given parameters.
+     */
+    function renderIsometricSVG(grid, colorGrid, clusterGrid, clustersInfo, N, options) {
+      const { isFused, fusionType, palette, showStroke, strokeWidth, strokeColor } = options;
+      const tileSize = 24; // Base tile scale
+      const actualStrokeColor = (strokeColor === "auto") ? "rgba(15, 23, 42, 0.75)" : strokeColor;
+
+      // Collect all visible faces across voxels
+      const visibleFaces = [];
+
+      for (let x = 0; x < N; x++) {
+        for (let y = 0; y < N; y++) {
+          for (let z = 0; z < N; z++) {
+            if (!grid[x][y][z]) continue;
+
+            const colorIdx = colorGrid[x][y][z];
+            const clusterId = clusterGrid[x][y][z];
+
+            // Check Top Face (+Z)
+            if (z === N - 1 || !grid[x][y][z + 1]) {
+              visibleFaces.push({
+                type: "TOP",
+                planeDepth: z + 1,
+                x, y, z, colorIdx, clusterId,
+                // Top vertices clockwise
+                v3D: [
+                  [x, y, z + 1],
+                  [x + 1, y, z + 1],
+                  [x + 1, y + 1, z + 1],
+                  [x, y + 1, z + 1]
+                ]
+              });
+            }
+
+            // Check Left Face (+Y plane facing front-left)
+            if (y === N - 1 || !grid[x][y + 1][z]) {
+              visibleFaces.push({
+                type: "LEFT",
+                planeDepth: y + 1,
+                x, y, z, colorIdx, clusterId,
+                // Left vertices clockwise
+                v3D: [
+                  [x, y + 1, z + 1],
+                  [x + 1, y + 1, z + 1],
+                  [x + 1, y + 1, z],
+                  [x, y + 1, z]
+                ]
+              });
+            }
+
+            // Check Right Face (+X plane facing front-right)
+            if (x === N - 1 || !grid[x + 1][y][z]) {
+              visibleFaces.push({
+                type: "RIGHT",
+                planeDepth: x + 1,
+                x, y, z, colorIdx, clusterId,
+                // Right vertices clockwise
+                v3D: [
+                  [x + 1, y, z + 1],
+                  [x + 1, y, z],
+                  [x + 1, y + 1, z],
+                  [x + 1, y + 1, z + 1]
+                ]
+              });
+            }
+          }
+        }
+      }
+
+      // Sort visible faces in Painter's Algorithm Order (back to front)
+      // Sorting key: depth = x + y + z, then z, then x, then y
+      visibleFaces.sort((a, b) => {
+        const depthA = a.x + a.y + a.z;
+        const depthB = b.x + b.y + b.z;
+        if (depthA !== depthB) return depthA - depthB;
+        if (a.z !== b.z) return a.z - b.z;
+        if (a.x !== b.x) return a.x - b.x;
+        return a.y - b.y;
+      });
+
+      // Calculate Projected 2D Points for all faces
+      for (const face of visibleFaces) {
+        face.v2D = face.v3D.map(p => project3D(p[0], p[1], p[2], tileSize));
+      }
+
+      // Calculate Bounding Box of Entire Object for SVG ViewBox
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const face of visibleFaces) {
+        for (const pt of face.v2D) {
+          if (pt[0] < minX) minX = pt[0];
+          if (pt[0] > maxX) maxX = pt[0];
+          if (pt[1] < minY) minY = pt[1];
+          if (pt[1] > maxY) maxY = pt[1];
+        }
+      }
+
+      // Add padding
+      const padding = 20;
+      minX -= padding; minY -= padding;
+      maxX += padding; maxY += padding;
+      const viewBoxWidth = Math.max(100, maxX - minX);
+      const viewBoxHeight = Math.max(100, maxY - minY);
+
+      // Compute Cluster 2D Bounding Boxes for Unified Gradient Mapping
+      const clusterBounds = {};
+      for (const cluster of clustersInfo) {
+        clusterBounds[cluster.id] = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+      }
+      for (const face of visibleFaces) {
+        const bounds = clusterBounds[face.clusterId];
+        if (bounds) {
+          for (const pt of face.v2D) {
+            if (pt[0] < bounds.minX) bounds.minX = pt[0];
+            if (pt[0] > bounds.maxX) bounds.maxX = pt[0];
+            if (pt[1] < bounds.minY) bounds.minY = pt[1];
+            if (pt[1] > bounds.maxY) bounds.maxY = pt[1];
+          }
+        }
+      }
+
+      // Generate SVG Defs (Linear Gradients per Color Cluster)
+      let svgDefs = "<defs>";
+      for (const cluster of clustersInfo) {
+        const palColor = palette.colors[cluster.colorIdx % palette.colors.length];
+        const bounds = clusterBounds[cluster.id] || { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+
+        svgDefs += `
+          <linearGradient id="grad-${cluster.id}" x1="${bounds.minX}" y1="${bounds.minY}" x2="${bounds.maxX}" y2="${bounds.maxY}" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="${palColor.stop1}" />
+            <stop offset="100%" stop-color="${palColor.stop2}" />
+          </linearGradient>
+        `;
+      }
+      svgDefs += "</defs>";
+
+      let svgContent = "";
+      let totalLoopsCount = 0;
+
+      if (!isFused) {
+        // UNFUSED / GRID MODE: Render every individual polygon rhombus with strokes
+        for (const face of visibleFaces) {
+          const pathD = `M ${face.v2D.map(pt => `${pt[0].toFixed(2)},${pt[1].toFixed(2)}`).join(" L ")} Z`;
+              const strokeAttr = showStroke ? `stroke="${actualStrokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"` : "";
+
+          let overlayColor = "";
+          if (face.type === "LEFT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.15" />`;
+          else if (face.type === "RIGHT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.32" />`;
+
+          svgContent += `<path d="${pathD}" fill="url(#grad-${face.clusterId})" ${strokeAttr} />${overlayColor}`;
+        }
+        totalLoopsCount = visibleFaces.length;
+      } else {
+        // FUSED MODE: Color-Based Region Fusion (Boolean Union Contour Extraction)
+        // Group faces by clusterId + faceType + (optional 3D Coplanar Plane Depth)
+        const faceGroups = {};
+        for (const face of visibleFaces) {
+          const groupKey = (fusionType === "coplanar")
+            ? `${face.clusterId}_${face.type}_p${face.planeDepth}`
+            : `${face.clusterId}_${face.type}`;
+          if (!faceGroups[groupKey]) faceGroups[groupKey] = [];
+          faceGroups[groupKey].push(face);
+        }
+
+        // Render each face group
+        for (const [groupKey, faces] of Object.entries(faceGroups)) {
+          const parts = groupKey.split("_");
+          const clusterId = parseInt(parts[0], 10);
+          const faceType = parts[1];
+
+          // Collect directed edges for Boolean Union Edge Cancellation
+          const edgeMap = new Map(); // key: "p1Key->p2Key" => { p1, p2 }
+
+          for (const face of faces) {
+            const v = face.v2D;
+            const edges = [
+              [v[0], v[1]],
+              [v[1], v[2]],
+              [v[2], v[3]],
+              [v[3], v[0]]
+            ];
+
+            for (const [p1, p2] of edges) {
+              const k1 = formatPt(p1);
+              const k2 = formatPt(p2);
+
+              const forwardKey = `${k1}->${k2}`;
+              const reverseKey = `${k2}->${k1}`;
+
+              if (edgeMap.has(reverseKey)) {
+                // Internal shared edge! Cancel out
+                edgeMap.delete(reverseKey);
+              } else {
+                edgeMap.set(forwardKey, { p1, p2, k1, k2 });
+              }
+            }
+          }
+
+          // Build Boundary Contour Loops from remaining directed edges
+          const loops = [];
+          const remainingEdges = new Map(edgeMap);
+
+          while (remainingEdges.size > 0) {
+            const [startKey, startEdge] = remainingEdges.entries().next().value;
+            remainingEdges.delete(startKey);
+
+            const loop = [startEdge.p1, startEdge.p2];
+            let currentK = startEdge.k2;
+
+            let foundNext = true;
+            while (foundNext && currentK !== startEdge.k1 && remainingEdges.size > 0) {
+              foundNext = false;
+              for (const [eKey, edge] of remainingEdges.entries()) {
+                if (edge.k1 === currentK) {
+                  loop.push(edge.p2);
+                  currentK = edge.k2;
+                  remainingEdges.delete(eKey);
+                  foundNext = true;
+                  break;
+                }
+              }
+            }
+
+            loops.push(loop);
+          }
+
+          totalLoopsCount += loops.length;
+
+          // Convert loops to SVG Path String
+          let pathD = "";
+          for (const loop of loops) {
+            if (loop.length < 3) continue;
+            pathD += `M ${loop.map(pt => `${pt[0].toFixed(2)},${pt[1].toFixed(2)}`).join(" L ")} Z `;
+          }
+
+          if (pathD.trim().length > 0) {
+                const strokeAttr = showStroke ? `stroke="${actualStrokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"` : "";
+
+            let overlayColor = "";
+            if (faceType === "LEFT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.15" />`;
+            else if (faceType === "RIGHT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.32" />`;
+
+            svgContent += `<path d="${pathD}" fill="url(#grad-${clusterId})" ${strokeAttr} />${overlayColor}`;
+          }
+        }
+      }
+
+      const svgHeader = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX.toFixed(2)} ${minY.toFixed(2)} ${viewBoxWidth.toFixed(2)} ${viewBoxHeight.toFixed(2)}" class="w-full h-full max-h-full drop-shadow-md transition-all duration-300">`;
+      const fullSvg = `${svgHeader}${svgDefs}${svgContent}</svg>`;
+
+      return {
+        svgString: fullSvg,
+        stats: {
+          visibleFacesCount: visibleFaces.length,
+          loopsCount: totalLoopsCount,
+          clusterCount: clustersInfo.length
+        }
+      };
+    }
+
+    // =========================================================================
+    // 7. UI RENDERER & EVENT HANDLERS
+    // =========================================================================
+
+    function updatePaletteSwatches() {
+      const palette = PALETTES[state.paletteKey];
+      paletteSwatches.innerHTML = "";
+      palette.colors.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "flex-1 h-full";
+        div.style.background = `linear-gradient(135deg, ${c.stop1}, ${c.stop2})`;
+        paletteSwatches.appendChild(div);
+      });
+    }
+
+    function renderApp() {
+      const mainRng = createRNG(state.seed);
+      const palette = PALETTES[state.paletteKey];
+
+      gridMatrix.innerHTML = "";
+
+      let selectedCellData = null;
+
+      // Render 16 Cell Matrix
+      for (let i = 0; i < 16; i++) {
+        // Derive unique seed per cell from main seed
+        const cellSeed = `${state.seed}-var-${i}`;
+        const cellRng = createRNG(cellSeed);
+
+        const grid = generateVoxelGrid(state.gridSize, state.density, state.symmetry, cellRng);
+        const colorGrid = assignVoxelColors(grid, state.gridSize, state.colorStrategy, palette.colors.length, cellRng);
+        const { clusterGrid, clustersInfo } = labelConnectedComponents(grid, colorGrid, state.gridSize);
+
+        // Count active voxels
+        let voxelCount = 0;
+        for (let x = 0; x < state.gridSize; x++) {
+          for (let y = 0; y < state.gridSize; y++) {
+            for (let z = 0; z < state.gridSize; z++) {
+              if (grid[x][y][z]) voxelCount++;
+            }
+          }
+        }
+
+        const renderResult = renderIsometricSVG(grid, colorGrid, clusterGrid, clustersInfo, state.gridSize, {
+          isFused: state.isFused,
+          fusionType: state.fusionType,
+          palette,
+          showStroke: state.showStroke,
+          strokeWidth: state.strokeWidth,
+          strokeColor: state.strokeColor
+        });
+
+        const isSelected = (i === state.selectedCellIndex);
+        if (isSelected) {
+          selectedCellData = {
+            renderResult,
+            voxelCount,
+            clusterCount: clustersInfo.length,
+            cellIndex: i
+          };
+        }
+
+        // Cell Container
+        const cellCard = document.createElement("div");
+        cellCard.className = `bg-white border rounded-xl p-3 flex flex-col items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-400 group relative ${isSelected ? 'grid-cell-active shadow-sm' : 'border-slate-200'}`;
+        cellCard.onclick = () => {
+          state.selectedCellIndex = i;
+          renderApp();
+        };
+
+        const previewContainer = document.createElement("div");
+        previewContainer.className = "w-full h-32 flex items-center justify-center p-1";
+        previewContainer.innerHTML = renderResult.svgString;
+
+        const cellFooter = document.createElement("div");
+        cellFooter.className = "w-full flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400 font-mono";
+        cellFooter.innerHTML = `<span>#${i + 1}</span><span>${voxelCount} voxels</span>`;
+
+        cellCard.appendChild(previewContainer);
+        cellCard.appendChild(cellFooter);
+        gridMatrix.appendChild(cellCard);
+      }
+
+      // Update Inspector Panel with Selected Cell
+      if (selectedCellData) {
+        inspectorSvgContainer.innerHTML = selectedCellData.renderResult.svgString;
+        inspectorCellTitle.textContent = `Variation Cell #${selectedCellData.cellIndex + 1}`;
+
+        statVoxelCount.textContent = selectedCellData.voxelCount;
+        statClusterCount.textContent = selectedCellData.clusterCount;
+        statFaceCount.textContent = selectedCellData.renderResult.stats.visibleFacesCount;
+        statLoopCount.textContent = selectedCellData.renderResult.stats.loopsCount;
+      }
+    }
+
+    // Attach Controls Event Listeners
+    seedInput.addEventListener("input", (e) => {
+      state.seed = e.target.value.trim() || "seed-123";
+      renderApp();
+    });
+
+    regenSeedBtn.addEventListener("click", () => {
+      state.seed = "iso-" + Math.random().toString(36).substring(2, 9);
+      seedInput.value = state.seed;
+      renderApp();
+    });
+
+    randomizeAllBtn.addEventListener("click", () => {
+      state.seed = "iso-" + Math.random().toString(36).substring(2, 9);
+      seedInput.value = state.seed;
+      renderApp();
+    });
+
+    gridSizeRange.addEventListener("input", (e) => {
+      state.gridSize = parseInt(e.target.value, 10);
+      gridSizeVal.textContent = `${state.gridSize} x ${state.gridSize} x ${state.gridSize}`;
+      renderApp();
+    });
+
+    densityRange.addEventListener("input", (e) => {
+      state.density = parseInt(e.target.value, 10) / 100;
+      densityVal.textContent = `${e.target.value}%`;
+      renderApp();
+    });
+
+    symmetrySelect.addEventListener("change", (e) => {
+      state.symmetry = e.target.value;
+      renderApp();
+    });
+
+    paletteSelect.addEventListener("change", (e) => {
+      state.paletteKey = e.target.value;
+      updatePaletteSwatches();
+      renderApp();
+    });
+
+    colorStrategySelect.addEventListener("change", (e) => {
+      state.colorStrategy = e.target.value;
+      renderApp();
+    });
+
+    fusionTypeSelect.addEventListener("change", (e) => {
+      state.fusionType = e.target.value;
+      renderApp();
+    });
+
+    strokeToggle.addEventListener("change", (e) => {
+      state.showStroke = e.target.checked;
+      renderApp();
+    });
+
+    strokeWidthRange.addEventListener("input", (e) => {
+      state.strokeWidth = parseFloat(e.target.value);
+      strokeWidthVal.textContent = `${state.strokeWidth.toFixed(1)}px`;
+      renderApp();
+    });
+
+    strokeColorSelect.addEventListener("change", (e) => {
+      state.strokeColor = e.target.value;
+      renderApp();
+    });
+
+    // Fused vs Unfused Toggles
+    modeFusedBtn.addEventListener("click", () => {
+      state.isFused = true;
+      modeFusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm bg-white text-blue-600 transition-all flex items-center space-x-1.5";
+      modeUnfusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1.5";
+      currentModeLabel.textContent = "Color Region Fusion";
+      renderApp();
+    });
+
+    modeUnfusedBtn.addEventListener("click", () => {
+      state.isFused = false;
+      modeUnfusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm bg-white text-blue-600 transition-all flex items-center space-x-1.5";
+      modeFusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1.5";
+      currentModeLabel.textContent = "Grid Mode (Unfused)";
+      renderApp();
+    });
+
+    // Initialize App
+    updatePaletteSwatches();
+    renderApp();
+  </script>
+</body>
+</html>
