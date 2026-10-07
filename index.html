@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glio - Cellular Hub & Event System</title>
+  <style>
+    :root {
+      --bg-dark: #090a0f;
+      --bg-panel: #12151e;
+      --bg-panel-transparent: rgba(18, 21, 30, 0.75);
+      --bg-card: rgba(22, 27, 38, 0.85);
+      --border-color: rgba(255, 255, 255, 0.12);
+      --border-bright: rgba(0, 240, 255, 0.35);
+
+      --text-main: #f0f4f8;
+      --text-muted: #8a99ad;
+      --text-dim: #505c6e;
+
+      --accent-cyan: #00f0ff;
+      --accent-cyan-glow: rgba(0, 240, 255, 0.3);
+      --accent-amber: #ffb703;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-violet: #a855f7;
+
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Fullscreen Canvas */
+    #gl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      transition: filter 0.5s ease;
+    }
+
+    body.microscope-focused #gl-canvas {
+      filter: blur(14px) brightness(0.65) contrast(1.1);
+    }
+
+    /* UI Container Layer */
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Header Bar */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel-transparent);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      animation: pulse-glow 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 16px var(--accent-cyan); }
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 2px;
+      color: var(--text-main);
+      text-transform: uppercase;
+    }
+
+    .brand-subtitle {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: var(--accent-cyan);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      box-shadow: 0 0 16px var(--accent-cyan);
+    }
+
+    .select-input {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .select-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Footer Status Bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel-transparent);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-items {
+      display: flex;
+      gap: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .status-dot.healthy { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+    .status-dot.warning { background: var(--accent-amber); box-shadow: 0 0 6px var(--accent-amber); }
+    .status-dot.active { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+
+    /* Floating Microscope HUD Reticle */
+    .viewfinder-hud {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      height: 85%;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .viewfinder-corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(0, 240, 255, 0.4);
+      border-style: solid;
+    }
+
+    .corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+    .corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+    .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+    .corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+    /* Hover HUD Card */
+    #hover-hud {
+      position: absolute;
+      pointer-events: none;
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      padding: 12px;
+      width: 240px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 50;
+    }
+
+    #hover-hud.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hud-header {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+
+    .hud-label { color: var(--text-muted); }
+    .hud-value { color: var(--text-main); font-weight: 500; }
+
+    /* Modal / Popover Overlay Layer */
+    #popover-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #popover-layer.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .popover-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      width: 680px;
+      max-width: 90vw;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.15);
+      overflow: hidden;
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #popover-layer.active .popover-card {
+      transform: scale(1);
+    }
+
+    .popover-header {
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .popover-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .popover-body {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .popover-footer {
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Monospaced Code Editor View */
+    .code-editor-wrapper {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #090b10;
+      overflow: hidden;
+    }
+
+    .code-editor-header {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    textarea.code-editor {
+      width: 100%;
+      height: 220px;
+      background: transparent;
+      border: none;
+      color: #7dd3fc;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 12px;
+      resize: vertical;
+      outline: none;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+
+    /* Form Fields in Popovers */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .form-input {
+      background: #0d1017;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Terminal Output Styling */
+    .terminal-container {
+      background: #050608;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #38bdf8;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Startup Viewfinder Calibration Screen Overlay */
+    #startup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #050609;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    #startup-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .microscope-lens-ring {
+      width: 220px;
+      height: 220px;
+      border: 2px dashed var(--accent-cyan);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: spin-ring 12s linear infinite;
+    }
+
+    @keyframes spin-ring {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .lens-inner-circle {
+      width: 170px;
+      height: 170px;
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, transparent 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px var(--accent-cyan-glow);
+    }
+
+    .startup-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--accent-cyan);
+      margin-top: 32px;
+      text-transform: uppercase;
+    }
+
+    .startup-log {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      height: 20px;
+      letter-spacing: 1px;
+    }
+
+    .progress-bar-track {
+      width: 280px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: 16px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      transition: width 0.1s linear;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Startup Microscope Viewfinder Boot Screen -->
+  <div id="startup-overlay">
+    <div class="microscope-lens-ring">
+      <div class="lens-inner-circle">
+        <span style="font-size: 24px; color: var(--accent-cyan); font-weight: bold;">GLIO</span>
+      </div>
+    </div>
+    <div class="startup-title">GLIO MICROSCOPE INITIALIZATION</div>
+    <div class="startup-log" id="startup-log-text">Calibrating focal lens plane...</div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="startup-progress"></div>
+    </div>
+  </div>
+
+  <!-- Background Simulation Canvas -->
+  <canvas id="gl-canvas"></canvas>
+
+  <!-- Microscope HUD Reticle Frame -->
+  <div class="viewfinder-hud">
+    <div class="viewfinder-corner corner-tl"></div>
+    <div class="viewfinder-corner corner-tr"></div>
+    <div class="viewfinder-corner corner-bl"></div>
+    <div class="viewfinder-corner corner-br"></div>
+  </div>
+
+  <!-- UI Overlay Layer -->
+  <div id="ui-layer">
+    <!-- Top Header -->
+    <header class="header-bar interactive">
+      <div class="brand">
+        <div class="brand-icon"></div>
+        <div>
+          <span class="brand-title">GLIO CORE</span>
+          <span class="brand-subtitle">v2.4.0-cellular</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <label for="event-source-select" style="color: var(--text-muted); font-size: 11px;">SOURCE:</label>
+        <select id="event-source-select" class="select-input">
+          <!-- Populated dynamically -->
+        </select>
+        <button class="btn btn-primary" id="btn-simulate-event">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          SIMULATE EVENT
+        </button>
+      </div>
+    </header>
+
+    <!-- Bottom Status Bar -->
+    <footer class="status-bar interactive">
+      <div class="status-items">
+        <div class="status-item">
+          <span class="status-dot healthy"></span>
+          <span>NUCLEUS: OPTIMAL</span>
+        </div>
+        <div class="status-item">
+          <span class="status-dot active"></span>
+          <span>GLIOSOMES: <span id="stat-active-count">5</span> ONLINE</span>
+        </div>
+        <div class="status-item">
+          <span class="status-dot healthy"></span>
+          <span>MEMBRANE GATEWAY: ACTIVE</span>
+        </div>
+      </div>
+      <div>
+        <span>FPS: <span id="stat-fps">60</span></span> |
+        <span>VESICLES IN TRANSIT: <span id="stat-vesicles">0</span></span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Hover HUD Card -->
+  <div id="hover-hud">
+    <div class="hud-header">
+      <span id="hud-name">GLIOSOME</span>
+      <span id="hud-status-badge" style="color: var(--accent-emerald);">HEALTHY</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">CRON SCHEDULE:</span>
+      <span class="hud-value" id="hud-cron">*/5 * * * *</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">LAST EXECUTION:</span>
+      <span class="hud-value" id="hud-last-run">12s ago</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">EXEC TIME:</span>
+      <span class="hud-value" id="hud-exec-time">42ms</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">SCRIPT HASH:</span>
+      <span class="hud-value" id="hud-hash">#8f3a9e</span>
+    </div>
+  </div>
+
+  <!-- Popover / Focus Overlay Modal -->
+  <div id="popover-layer">
+    <div class="popover-card" id="popover-content">
+      <!-- Dynamic popover content injected here -->
+    </div>
+  </div>
+
+  <!-- Application Script -->
+  <script>
+    // --- GLIO CELLULAR SIMULATION ENGINE ---
+
+    // State Management
+    const state = {
+      time: 0,
+      fps: 60,
+      lastFrameTime: performance.now(),
+      frameCount: 0,
+      fpsTimer: performance.now(),
+      isStartupComplete: false,
+      isFocused: false,
+      focusedEntity: null,
+      hoveredEntity: null,
+      draggedEntity: null,
+      dragOffset: { x: 0, y: 0 },
+      mouse: { x: 0, y: 0 },
+      canvasSize: { width: window.innerWidth, height: window.innerHeight },
+      vesicles: [],
+      gliosomes: []
+    };
+
+    // Canvas Setup
+    const canvas = document.getElementById('gl-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      state.canvasSize.width = window.innerWidth;
+      state.canvasSize.height = window.innerHeight;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Glio Core (Nucleus Position & Radius)
+    function getCorePosition() {
+      return {
+        x: state.canvasSize.width * 0.22,
+        y: state.canvasSize.height * 0.5,
+        radius: Math.min(state.canvasSize.width, state.canvasSize.height) * 0.16
+      };
+    }
+
+    // Cell Membrane (Wall) Curve Parameters
+    function getMembranePath(time) {
+      const w = state.canvasSize.width;
+      const h = state.canvasSize.height;
+      const xBase = w * 0.88;
+      const points = [];
+      const steps = 30;
+
+      for (let i = 0; i <= steps; i++) {
+        const y = (h / steps) * i;
+        const wave1 = Math.sin(y * 0.008 + time * 0.8) * 16;
+        const wave2 = Math.cos(y * 0.015 - time * 0.5) * 8;
+        const x = xBase + wave1 + wave2;
+        points.push({ x, y });
+      }
+      return points;
+    }
+
+    // Draw Cell Membrane (Cell Wall)
+    function drawCellMembrane(time) {
+      const points = getMembranePath(time);
+      if (points.length === 0) return;
+
+      // Membrane lipid bilayer outer fill
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.lineTo(state.canvasSize.width, state.canvasSize.height);
+      ctx.lineTo(state.canvasSize.width, 0);
+      ctx.closePath();
+
+      const grad = ctx.createLinearGradient(state.canvasSize.width * 0.8, 0, state.canvasSize.width, 0);
+      grad.addColorStop(0, 'rgba(0, 240, 255, 0.03)');
+      grad.addColorStop(1, 'rgba(16, 185, 129, 0.08)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Outer membrane double layer line
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+
+      // Inner lipid line
+      ctx.beginPath();
+      ctx.moveTo(points[0].x + 8, points[0].y);
+      for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2 + 8;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x + 8, points[i].y, xc, yc);
+      }
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // Draw Central Glio Core (Nucleus Hub)
+    function drawGlioCore(time) {
+      const core = getCorePosition();
+      ctx.save();
+
+      // Outer nuclear envelope glow
+      const glowGrad = ctx.createRadialGradient(core.x, core.y, core.radius * 0.5, core.x, core.y, core.radius * 1.8);
+      glowGrad.addColorStop(0, 'rgba(0, 240, 255, 0.25)');
+      glowGrad.addColorStop(0.6, 'rgba(168, 85, 247, 0.1)');
+      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer Nuclear Envelope with pores
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([12, 6]);
+      ctx.lineDashOffset = -time * 10;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Inner Chromatin / Hub Core
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius * 0.68, 0, Math.PI * 2);
+      const innerGrad = ctx.createRadialGradient(core.x, core.y, 0, core.x, core.y, core.radius * 0.68);
+      innerGrad.addColorStop(0, '#121d33');
+      innerGrad.addColorStop(0.8, '#0b1326');
+      innerGrad.addColorStop(1, 'rgba(0, 240, 255, 0.2)');
+      ctx.fillStyle = innerGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Central Nucleolus Node
+      const pulse = Math.sin(time * 2) * 3;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius * 0.25 + pulse, 0, Math.PI * 2);
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 20;
+      ctx.fill();
+
+      // Core Label Typography
+      ctx.shadowBlur = 0;
+      ctx.font = '700 11px "SF Mono", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('GLIO_NUCLEUS', core.x, core.y + core.radius + 20);
+
+      ctx.font = '10px "SF Mono", monospace';
+      ctx.fillStyle = '#8a99ad';
+      ctx.fillText('HUB_CORE // ID: 0x00_MASTER', core.x, core.y + core.radius + 34);
+
+      ctx.restore();
+    }
+
+    // --- PROCEDURAL GLIOSOME (PROTEIN) ENGINE ---
+
+    // Initial Default Gliosome Data Definitions
+    const defaultGliosomes = [
+      {
+        id: 1,
+        name: "THUNDERBIRD_INGEST",
+        status: "healthy",
+        cron: "*/5 * * * *",
+        lastRun: "14s ago",
+        execTime: "38ms",
+        color: "#00f0ff",
+        xRel: 0.48,
+        yRel: 0.30,
+        script: `// Thunderbird Ingestion Pipeline
+async function handleIngest(event) {
+  const payload = await event.readStream();
+  const parsed = parseTelemetry(payload);
+  if (parsed.hasError) {
+    return Glio.dispatch('ERR_INGEST', parsed);
+  }
+  return Glio.emit('METRICS_BATCH', parsed.data);
+}`
+      },
+      {
+        id: 2,
+        name: "PROMETHEUS_METRICS",
+        status: "healthy",
+        cron: "*/1 * * * *",
+        lastRun: "3s ago",
+        execTime: "12ms",
+        color: "#10b981",
+        xRel: 0.58,
+        yRel: 0.65,
+        script: `// Prometheus Metrics Exporter
+export function scrapeMetrics() {
+  const memory = Glio.getMemoryStats();
+  const activeEvents = Glio.getEventQueueLength();
+  return {
+    ts: Date.now(),
+    heap_used_mb: memory.heapUsed,
+    queue_depth: activeEvents
+  };
+}`
+      },
+      {
+        id: 3,
+        name: "HOME_ASSISTANT_STATE",
+        status: "healthy",
+        cron: "0 * * * *",
+        lastRun: "22m ago",
+        execTime: "105ms",
+        color: "#ffb703",
+        xRel: 0.72,
+        yRel: 0.28,
+        script: `// Home Assistant State Synchronizer
+function syncStates(states) {
+  for (const entity of states) {
+    if (entity.state === 'unavailable') {
+      Glio.notify('DEVICE_OFFLINE', entity.entity_id);
+    }
+  }
+}`
+      },
+      {
+        id: 4,
+        name: "WINDMILL_RUNNER",
+        status: "healthy",
+        cron: "*/15 * * * *",
+        lastRun: "8m ago",
+        execTime: "240ms",
+        color: "#a855f7",
+        xRel: 0.76,
+        yRel: 0.72,
+        script: `// Windmill Flow Execution Runner
+async function executeFlow(flowId, inputs) {
+  const job = await Windmill.trigger(flowId, inputs);
+  await job.wait();
+  return job.getResult();
+}`
+      },
+      {
+        id: 5,
+        name: "LOG_ROTATE_DAEMON",
+        status: "healthy",
+        cron: "0 0 * * *",
+        lastRun: "4h ago",
+        execTime: "512ms",
+        color: "#f43f5e",
+        xRel: 0.42,
+        yRel: 0.78,
+        script: `// Log Rotate & Clean Daemon
+function rotateLogs() {
+  const archives = Glio.fs.list('/var/log/glio');
+  archives.filter(f => f.ageDays > 7).forEach(f => f.delete());
+}`
+      }
+    ];
+
+    // Simple String Hash Function
+    function hashString(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    // Generate Organic Fourier Harmonics Protein Path
+    function generateProteinShape(cx, cy, baseRadius, seedHash, time, status) {
+      const numLoves = 5 + (seedHash % 4); // 5 to 8 organic lobes
+      const points = [];
+      const totalSteps = 60;
+
+      const harm1Factor = (seedHash % 7) * 0.08 + 0.15;
+      const harm2Factor = ((seedHash >> 3) % 5) * 0.05 + 0.08;
+      const speed = status === 'warning' ? 2.5 : 1.0;
+
+      for (let i = 0; i < totalSteps; i++) {
+        const angle = (i / totalSteps) * Math.PI * 2;
+        // Fourier harmonic sum for complex organic protein boundary
+        const r1 = Math.sin(angle * numLoves + time * speed + seedHash) * harm1Factor * baseRadius;
+        const r2 = Math.cos(angle * (numLoves / 2) - time * 0.8 * speed) * harm2Factor * baseRadius;
+        const radius = baseRadius + r1 + r2;
+
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
+        points.push({ x, y });
+      }
+      return points;
+    }
+
+    // Initialize Gliosomes in State
+    function initGliosomes() {
+      const w = state.canvasSize.width;
+      const h = state.canvasSize.height;
+
+      state.gliosomes = defaultGliosomes.map((g) => {
+        const scriptHash = '#' + hashString(g.script + g.name).toString(16).substring(0, 6);
+        return {
+          ...g,
+          x: w * g.xRel,
+          y: h * g.yRel,
+          baseX: w * g.xRel,
+          baseY: h * g.yRel,
+          driftAngle: Math.random() * Math.PI * 2,
+          radius: 36,
+          hash: scriptHash,
+          seedHash: hashString(g.name + scriptHash)
+        };
+      });
+
+      // Populate Select Dropdown in UI Header
+      const select = document.getElementById('event-source-select');
+      if (select) {
+        select.innerHTML = state.gliosomes.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+      }
+    }
+
+    // Update Brownian Drift Motion
+    function updateGliosomePositions(dt) {
+      state.gliosomes.forEach((g) => {
+        if (state.draggedEntity && state.draggedEntity.id === g.id) return;
+
+        // Gentle fluid Brownian drift
+        g.driftAngle += (Math.random() - 0.5) * 0.4 * dt;
+        const driftSpeed = g.status === 'warning' ? 18 : 8;
+        g.x += Math.cos(g.driftAngle) * driftSpeed * dt;
+        g.y += Math.sin(g.driftAngle) * driftSpeed * dt;
+
+        // Anchor constraint to prevent floating off screen
+        const dx = g.baseX - g.x;
+        const dy = g.baseY - g.y;
+        g.x += dx * 0.2 * dt;
+        g.y += dy * 0.2 * dt;
+      });
+    }
+
+    // Draw Individual Gliosome
+    function drawGliosome(g, time) {
+      ctx.save();
+
+      const isHovered = state.hoveredEntity && state.hoveredEntity.id === g.id;
+      const isFocused = state.focusedEntity && state.focusedEntity.id === g.id;
+
+      // Outer Aura Glow
+      const glowGrad = ctx.createRadialGradient(g.x, g.y, g.radius * 0.4, g.x, g.y, g.radius * 2.2);
+      glowGrad.addColorStop(0, g.color + '40');
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.radius * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Generate Organic Protein Path
+      const points = generateProteinShape(g.x, g.y, g.radius, g.seedHash, time, g.status);
+
+      // Draw Organic Protein Body
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      ctx.closePath();
+
+      // Body Gradient Fill
+      const bodyGrad = ctx.createRadialGradient(g.x - 10, g.y - 10, 5, g.x, g.y, g.radius * 1.2);
+      bodyGrad.addColorStop(0, '#1c2638');
+      bodyGrad.addColorStop(0.7, '#0d131f');
+      bodyGrad.addColorStop(1, g.color + '33');
+      ctx.fillStyle = bodyGrad;
+      ctx.fill();
+
+      // Stroke Contour Border
+      ctx.strokeStyle = isHovered || isFocused ? '#00f0ff' : g.color;
+      ctx.lineWidth = isHovered || isFocused ? 2.5 : 1.5;
+      if (isHovered || isFocused) {
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 15;
+      }
+      ctx.stroke();
+
+      // Inner Core Binding Spot
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = g.color;
+      ctx.fill();
+
+      // Sleek Monospaced Label
+      ctx.font = '600 10px "SF Mono", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(g.name, g.x, g.y + g.radius + 12);
+
+      ctx.font = '9px "SF Mono", monospace';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.fillText(g.hash, g.x, g.y + g.radius + 25);
+
+      ctx.restore();
+    }
+
+    // --- VESICLE TRANSPORT & EVENT TERMINAL SIMULATION ---
+
+    function createVesicle(sourceGliosome) {
+      const core = getCorePosition();
+      const vesicle = {
+        id: Math.random().toString(36).substring(2, 9),
+        source: sourceGliosome,
+        startX: sourceGliosome.x,
+        startY: sourceGliosome.y,
+        targetX: core.x,
+        targetY: core.y,
+        progress: 0,
+        speed: 0.6, // Duration ~1.6 seconds
+        color: sourceGliosome.color,
+        payload: {
+          event_id: 'evt_' + Math.random().toString(36).substring(2, 10),
+          timestamp: new Date().toISOString(),
+          source_module: sourceGliosome.name,
+          source_hash: sourceGliosome.hash,
+          target_node: 'GLIO_NUCLEUS_CORE',
+          execution_time_ms: Math.floor(Math.random() * 40) + 10,
+          status: 'SUCCESS_DELIVERED',
+          data: {
+            batch_size: Math.floor(Math.random() * 100) + 1,
+            memory_delta_kb: +(Math.random() * 12.4).toFixed(2),
+            checksum: '0x' + Math.random().toString(16).substring(2, 10).toUpperCase()
+          }
+        }
+      };
+      state.vesicles.push(vesicle);
+      document.getElementById('stat-vesicles').innerText = state.vesicles.length;
+    }
+
+    function updateAndDrawVesicles(dt, time) {
+      ctx.save();
+      for (let i = state.vesicles.length - 1; i >= 0; i--) {
+        const v = state.vesicles[i];
+        v.progress += v.speed * dt;
+
+        if (v.progress >= 1) {
+          // Vesicle arrived at destination
+          const arrivedVesicle = state.vesicles.splice(i, 1)[0];
+          document.getElementById('stat-vesicles').innerText = state.vesicles.length;
+          showTerminalEventOutput(arrivedVesicle);
+          continue;
+        }
+
+        // Quadratic curved path along microtubule
+        const cpX = (v.startX + v.targetX) / 2 + Math.sin(time * 2 + v.source.id) * 20;
+        const cpY = (v.startY + v.targetY) / 2 + Math.cos(time * 2 + v.source.id) * 20;
+
+        const t = v.progress;
+        const currentX = (1 - t) * (1 - t) * v.startX + 2 * (1 - t) * t * cpX + t * t * v.targetX;
+        const currentY = (1 - t) * (1 - t) * v.startY + 2 * (1 - t) * t * cpY + t * t * v.targetY;
+
+        // Draw Glowing Vesicle Packet
+        ctx.beginPath();
+        ctx.arc(currentX, currentY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = v.color;
+        ctx.shadowColor = v.color;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+
+        // DNA/Data strand trail
+        ctx.beginPath();
+        ctx.arc(currentX - (v.targetX - v.startX) * 0.02, currentY - (v.targetY - v.startY) * 0.02, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function showTerminalEventOutput(vesicle) {
+      state.isFocused = true;
+      state.focusedEntity = vesicle.source;
+      document.body.classList.add('microscope-focused');
+
+      const jsonString = JSON.stringify(vesicle.payload, null, 2);
+
+      popoverContent.innerHTML = `
+        <div class="popover-header">
+          <div class="popover-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+            VESICLE EVENT TERMINAL OUTPUT
+          </div>
+          <span style="font-size: 11px; color: var(--accent-emerald); font-weight: 600;">STATUS: 200 OK</span>
+        </div>
+        <div class="popover-body">
+          <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>SOURCE: <strong style="color: var(--accent-cyan);">${vesicle.source.name}</strong></span>
+            <span>EVENT_ID: <strong>${vesicle.payload.event_id}</strong></span>
+          </div>
+
+          <div class="terminal-container" id="terminal-json-output">${escapeHtml(jsonString)}</div>
+        </div>
+        <div class="popover-footer">
+          <button class="btn" id="pop-btn-copy">COPY JSON</button>
+          <button class="btn btn-primary" id="pop-btn-retrigger">SIMULATE AGAIN</button>
+          <button class="btn btn-primary" id="pop-btn-close-term">CLOSE TERMINAL</button>
+        </div>
+      `;
+
+      popoverLayer.classList.add('active');
+
+      document.getElementById('pop-btn-close-term').onclick = closeFocusPopover;
+      document.getElementById('pop-btn-retrigger').onclick = () => {
+        closeFocusPopover();
+        setTimeout(() => createVesicle(vesicle.source), 200);
+      };
+      document.getElementById('pop-btn-copy').onclick = () => {
+        navigator.clipboard.writeText(jsonString);
+        document.getElementById('pop-btn-copy').innerText = 'COPIED!';
+        setTimeout(() => {
+          const btn = document.getElementById('pop-btn-copy');
+          if (btn) btn.innerText = 'COPY JSON';
+        }, 1500);
+      };
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Attach Event Simulation Listener to UI Button
+    document.getElementById('btn-simulate-event').addEventListener('click', () => {
+      const select = document.getElementById('event-source-select');
+      const selectedId = parseInt(select.value, 10);
+      const selectedGliosome = state.gliosomes.find(g => g.id === selectedId) || state.gliosomes[0];
+
+      if (selectedGliosome) {
+        selectedGliosome.lastRun = 'Just now';
+        createVesicle(selectedGliosome);
+      }
+    });
+
+    // --- INTERACTIVE MICROSCOPIC FOCUS & POPOVER SYSTEM ---
+
+    const hoverHud = document.getElementById('hover-hud');
+    const popoverLayer = document.getElementById('popover-layer');
+    const popoverContent = document.getElementById('popover-content');
+
+    // Update Hover HUD Card Position & Content
+    function updateHoverHud(e) {
+      if (!state.hoveredEntity || state.isFocused || state.draggedEntity) {
+        hoverHud.classList.remove('visible');
+        return;
+      }
+
+      const entity = state.hoveredEntity;
+      document.getElementById('hud-name').innerText = entity.name;
+
+      const badge = document.getElementById('hud-status-badge');
+      badge.innerText = entity.status.toUpperCase();
+      badge.style.color = entity.status === 'healthy' ? 'var(--accent-emerald)' : 'var(--accent-amber)';
+
+      document.getElementById('hud-cron').innerText = entity.cron;
+      document.getElementById('hud-last-run').innerText = entity.lastRun;
+      document.getElementById('hud-exec-time').innerText = entity.execTime;
+      document.getElementById('hud-hash').innerText = entity.hash;
+
+      hoverHud.style.left = (e.clientX + 16) + 'px';
+      hoverHud.style.top = (e.clientY + 16) + 'px';
+      hoverHud.classList.add('visible');
+    }
+
+    // Open Microscope Focus Popover
+    function openFocusPopover(entity, type = 'gliosome') {
+      state.isFocused = true;
+      state.focusedEntity = entity;
+      document.body.classList.add('microscope-focused');
+      hoverHud.classList.remove('visible');
+
+      if (type === 'gliosome') {
+        popoverContent.innerHTML = `
+          <div class="popover-header">
+            <div class="popover-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+              GLIOSOME FOCUS: ${entity.name}
+            </div>
+            <span style="font-size: 11px; color: var(--accent-cyan); font-weight: 600;">${entity.hash}</span>
+          </div>
+          <div class="popover-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label class="form-label">CRON INTERVAL SCHEDULE</label>
+                <input type="text" id="pop-cron-input" class="form-input" value="${entity.cron}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">HEALTH STATE</label>
+                <select id="pop-status-input" class="form-input">
+                  <option value="healthy" ${entity.status === 'healthy' ? 'selected' : ''}>HEALTHY (NORMAL DRIFT)</option>
+                  <option value="warning" ${entity.status === 'warning' ? 'selected' : ''}>WARNING (ELEVATED MOTION)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="code-editor-wrapper">
+              <div class="code-editor-header">
+                <span>SCRIPT CODE (RECALCULATES PROTEIN GEOMETRY IN REAL-TIME)</span>
+                <span>LANGUAGE: JAVASCRIPT</span>
+              </div>
+              <textarea id="pop-code-input" class="code-editor" spellcheck="false">${entity.script}</textarea>
+            </div>
+          </div>
+          <div class="popover-footer">
+            <button class="btn" id="pop-btn-cancel">CLOSE FOCUS</button>
+            <button class="btn btn-primary" id="pop-btn-save">APPLY & RE-SYNTHESIZE</button>
+          </div>
+        `;
+
+        // Code input listener for live protein re-synthesis
+        const codeInput = document.getElementById('pop-code-input');
+        codeInput.addEventListener('input', () => {
+          entity.script = codeInput.value;
+          entity.hash = '#' + hashString(entity.script + entity.name).toString(16).substring(0, 6);
+          entity.seedHash = hashString(entity.name + entity.hash);
+        });
+
+        document.getElementById('pop-btn-save').onclick = () => {
+          entity.cron = document.getElementById('pop-cron-input').value;
+          entity.status = document.getElementById('pop-status-input').value;
+          entity.lastRun = 'Just now';
+          closeFocusPopover();
+        };
+
+        document.getElementById('pop-btn-cancel').onclick = closeFocusPopover;
+      } else if (type === 'core') {
+        popoverContent.innerHTML = `
+          <div class="popover-header">
+            <div class="popover-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              GLIO CENTRAL NUCLEUS HUB
+            </div>
+            <span style="font-size: 11px; color: var(--accent-emerald); font-weight: 600;">SYS_STATUS: OPTIMAL</span>
+          </div>
+          <div class="popover-body">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+              <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 20px; font-weight: bold; color: var(--accent-cyan);">${state.gliosomes.length}</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">ACTIVE GLIOSOMES</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 20px; font-weight: bold; color: var(--accent-emerald);">99.98%</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">HUB UPTIME</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 20px; font-weight: bold; color: var(--accent-violet);">1.2k req/s</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">VESICLE THROUGHPUT</div>
+              </div>
+            </div>
+
+            <div class="terminal-container">
+[GLIO_NUCLEUS_LOG] Core event loop running on master node 0x00
+[GLIO_NUCLEUS_LOG] Microtubule network initialized with 5 channels
+[GLIO_NUCLEUS_LOG] All workers healthy. Synchronized cron schedules.
+            </div>
+          </div>
+          <div class="popover-footer">
+            <button class="btn btn-primary" id="pop-btn-close">CLOSE CORE</button>
+          </div>
+        `;
+        document.getElementById('pop-btn-close').onclick = closeFocusPopover;
+      } else if (type === 'membrane') {
+        popoverContent.innerHTML = `
+          <div class="popover-header">
+            <div class="popover-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              CELL MEMBRANE BOUNDARY GATEWAY
+            </div>
+            <span style="font-size: 11px; color: var(--accent-emerald); font-weight: 600;">INGRESS/EGRESS: SECURE</span>
+          </div>
+          <div class="popover-body">
+            <p style="color: var(--text-muted); font-size: 12px;">
+              The cell wall serves as Glio's perimeter interface, managing external HTTP Webhooks, MQTT feeds, and remote WebSocket streams.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span>HTTP Ingress Gateway (Port 443)</span>
+                <span style="color: var(--accent-emerald);">LISTENING</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span>MQTT Broker Transport</span>
+                <span style="color: var(--accent-emerald);">CONNECTED</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span>Cell Wall Firewall Filter</span>
+                <span style="color: var(--accent-cyan);">ACTIVE (0 BLOCKED)</span>
+              </div>
+            </div>
+          </div>
+          <div class="popover-footer">
+            <button class="btn btn-primary" id="pop-btn-close">CLOSE GATEWAY</button>
+          </div>
+        `;
+        document.getElementById('pop-btn-close').onclick = closeFocusPopover;
+      }
+
+      popoverLayer.classList.add('active');
+    }
+
+    // Close Focus Popover
+    function closeFocusPopover() {
+      state.isFocused = false;
+      state.focusedEntity = null;
+      document.body.classList.remove('microscope-focused');
+      popoverLayer.classList.remove('active');
+    }
+
+    // Mouse Interaction Handlers
+    canvas.addEventListener('mousemove', (e) => {
+      state.mouse.x = e.clientX;
+      state.mouse.y = e.clientY;
+
+      if (state.draggedEntity) {
+        state.draggedEntity.x = e.clientX - state.dragOffset.x;
+        state.draggedEntity.y = e.clientY - state.dragOffset.y;
+        state.draggedEntity.baseX = state.draggedEntity.x;
+        state.draggedEntity.baseY = state.draggedEntity.y;
+        return;
+      }
+
+      if (state.isFocused) return;
+
+      // Check Hover over Gliosomes
+      let foundHover = null;
+      state.gliosomes.forEach((g) => {
+        const dist = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+        if (dist <= g.radius + 10) {
+          foundHover = g;
+        }
+      });
+
+      state.hoveredEntity = foundHover;
+      canvas.style.cursor = foundHover ? 'pointer' : 'default';
+      updateHoverHud(e);
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (state.isFocused) return;
+
+      // Check Click on Gliosomes
+      state.gliosomes.forEach((g) => {
+        const dist = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+        if (dist <= g.radius + 10) {
+          state.draggedEntity = g;
+          state.dragOffset.x = e.clientX - g.x;
+          state.dragOffset.y = e.clientY - g.y;
+        }
+      });
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (state.draggedEntity) {
+        state.draggedEntity.lastRun = 'Just now (Refresh)';
+        state.draggedEntity = null;
+      }
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (state.isFocused) return;
+
+      // Click Gliosome
+      let clickedEntity = null;
+      state.gliosomes.forEach((g) => {
+        const dist = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+        if (dist <= g.radius + 10) clickedEntity = g;
+      });
+
+      if (clickedEntity) {
+        openFocusPopover(clickedEntity, 'gliosome');
+        return;
+      }
+
+      // Click Core Nucleus
+      const core = getCorePosition();
+      const distCore = Math.hypot(e.clientX - core.x, e.clientY - core.y);
+      if (distCore <= core.radius) {
+        openFocusPopover(core, 'core');
+        return;
+      }
+
+      // Click Membrane Cell Wall
+      if (e.clientX >= state.canvasSize.width * 0.84) {
+        openFocusPopover(null, 'membrane');
+      }
+    });
+
+    // Draw Microtubule Filament Connectors
+    function drawMicrotubules(time) {
+      const core = getCorePosition();
+      const membranePoints = getMembranePath(time);
+
+      ctx.save();
+      ctx.lineWidth = 1;
+
+      // Connect Gliosomes to Core and Membrane
+      state.gliosomes.forEach((gliosome) => {
+        // Line to Core
+        ctx.beginPath();
+        ctx.moveTo(gliosome.x, gliosome.y);
+        const cp1x = (gliosome.x + core.x) / 2 + Math.sin(time + gliosome.id) * 20;
+        const cp1y = (gliosome.y + core.y) / 2 + Math.cos(time + gliosome.id) * 20;
+        ctx.quadraticCurveTo(cp1x, cp1y, core.x, core.y);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+        ctx.stroke();
+
+        // Line to Cell Membrane
+        const targetMembranePoint = membranePoints[Math.floor((gliosome.id / state.gliosomes.length) * (membranePoints.length - 1))];
+        if (targetMembranePoint) {
+          ctx.beginPath();
+          ctx.moveTo(gliosome.x, gliosome.y);
+          const cp2x = (gliosome.x + targetMembranePoint.x) / 2 + Math.cos(time * 0.8 + gliosome.id) * 15;
+          const cp2y = (gliosome.y + targetMembranePoint.y) / 2 + Math.sin(time * 0.8 + gliosome.id) * 15;
+          ctx.quadraticCurveTo(cp2x, cp2y, targetMembranePoint.x, targetMembranePoint.y);
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
+          ctx.stroke();
+        }
+      });
+
+      ctx.restore();
+    }
+
+    // Startup Animation Sequence
+    function initStartupSequence() {
+      const logText = document.getElementById('startup-log-text');
+      const progressBar = document.getElementById('startup-progress');
+      const overlay = document.getElementById('startup-overlay');
+
+      const steps = [
+        { progress: 20, text: "Calibrating microscope optics & focal plane..." },
+        { progress: 45, text: "Initializing Glio Nucleus Hub & microtubule net..." },
+        { progress: 75, text: "Synthesizing Gliosome protein structures..." },
+        { progress: 100, text: "Cellular environment ready. Opening viewfinder..." }
+      ];
+
+      let stepIdx = 0;
+      const interval = setInterval(() => {
+        if (stepIdx < steps.length) {
+          progressBar.style.width = steps[stepIdx].progress + '%';
+          logText.innerText = steps[stepIdx].text;
+          stepIdx++;
+        } else {
+          clearInterval(interval);
+          setTimeout(() => {
+            overlay.classList.add('hidden');
+            state.isStartupComplete = true;
+          }, 400);
+        }
+      }, 350);
+    }
+
+    // Main Render Loop
+    function render(currentTime) {
+      const dt = (currentTime - state.lastFrameTime) / 1000;
+      state.lastFrameTime = currentTime;
+      state.time = currentTime / 1000;
+
+      // Update FPS stats
+      state.frameCount++;
+      if (currentTime - state.fpsTimer >= 1000) {
+        state.fps = state.frameCount;
+        state.frameCount = 0;
+        state.fpsTimer = currentTime;
+        document.getElementById('stat-fps').innerText = state.fps;
+      }
+
+      // Clear Canvas
+      ctx.clearRect(0, 0, state.canvasSize.width, state.canvasSize.height);
+
+      // Update positions
+      updateGliosomePositions(dt);
+
+      // Render Geometry Layers
+      drawCellMembrane(state.time);
+      drawMicrotubules(state.time);
+      drawGlioCore(state.time);
+
+      // Render Gliosomes
+      state.gliosomes.forEach((g) => drawGliosome(g, state.time));
+
+      // Render Active Vesicle Data Packets
+      updateAndDrawVesicles(dt, state.time);
+
+      requestAnimationFrame(render);
+    }
+
+    // Start App Initialization
+    window.addEventListener('load', () => {
+      initGliosomes();
+      initStartupSequence();
+      requestAnimationFrame(render);
+    });
+  </script>
+</body>
+</html>
