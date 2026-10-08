@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glio · gliosoom-vormen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,300;1,6..72,400&family=DM+Mono:wght@400;500&display=swap">
+<style id="theme"></style>
+<style>
+/* Opbouw en typografie uit glio-ontwerp-demo.html. Kleuren alleen via variabelen uit src/iso/palette.js. */
+:root{--serif:'Newsreader',Georgia,serif;--mono:'DM Mono',ui-monospace,Menlo,monospace;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);display:flex;flex-direction:column;overflow:hidden}
+.mono{font-family:var(--mono);font-size:12px;color:var(--mute)}
+.mast{display:flex;justify-content:space-between;align-items:flex-end;padding:16px 28px 4px;gap:16px;flex-wrap:wrap}
+h1{font:italic 300 clamp(44px,8vw,84px)/.95 var(--serif);margin:2px 0 0;letter-spacing:-.025em}
+nav{display:flex;gap:20px;padding-bottom:10px;flex-wrap:wrap}
+a{color:var(--ink);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;cursor:pointer;font:12px var(--mono)}
+a[aria-current="page"]{text-decoration-thickness:2px;font-weight:500}
+a:focus-visible,[tabindex]:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+main{flex:1;min-height:0;display:flex;gap:28px;padding:0 28px}
+#stage{flex:1;min-width:0;position:relative;display:flex}
+.view{flex:1;min-width:0;display:none}
+.view.on{display:flex}
+.view>svg{flex:1;min-width:0;height:100%}
+aside{width:290px;flex:none;overflow:auto;padding-top:14px}
+aside h2{font:italic 400 32px/1.05 var(--serif);margin:4px 0 10px}
+aside p{margin:0 0 14px;line-height:1.5;font-size:17px}
+aside .big{display:block;width:100%;height:220px;margin:0 0 10px}
+dl{margin:0 0 16px;border-top:1px solid var(--line)}
+dl div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:15px}
+dt{font:12px var(--mono);color:var(--mute);padding-top:2px;flex:none}
+dd{margin:0;text-align:right}
+code{font:12px var(--mono)}
+.err{color:var(--err)}
+.acts{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+footer{padding:6px 28px 12px}
+#tip{position:fixed;pointer-events:none;background:var(--bg);border:1px solid var(--line);padding:7px 10px;font:12px var(--mono);color:var(--ink);opacity:0;transition:opacity .15s;z-index:5;max-width:240px}
+.ln{fill:none;stroke-width:1.2;stroke-dasharray:3 6;opacity:.75;animation:fl 9s linear infinite}
+@keyframes fl{to{stroke-dashoffset:-90}}
+.mod{cursor:pointer}
+.mod .name{font:11px var(--mono);fill:var(--ink)}
+.mod .vals,.src text{font:10px var(--mono);fill:var(--mute)}
+.mod.sel .name{text-decoration:underline;font-weight:500}
+/* Demomodus */
+#v-demo{flex-direction:column;overflow:auto}
+.demo-head{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0 4px;border-bottom:1px solid var(--line)}
+.tag{font:11px var(--mono);color:var(--bg);background:var(--mute);padding:1px 6px;letter-spacing:.04em}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px 18px;padding:8px 0 20px}
+.card{cursor:pointer;padding:4px 0 8px;border-bottom:1px solid transparent}
+.card svg{display:block;width:100%;height:170px}
+.card .name{font:13px var(--mono);color:var(--ink)}
+.card.sel .name{text-decoration:underline;font-weight:500}
+.card .vals{font:11px var(--mono);color:var(--mute)}
+/* Speelveld */
+#v-play>svg{flex:1}
+.ctl{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ctl label{display:flex;justify-content:space-between;font:12px var(--mono);color:var(--mute)}
+.ctl output{color:var(--ink)}
+.ctl input[type=range]{width:100%;accent-color:var(--ink)}
+.ctl input[type=text],.ctl select{font:13px var(--mono);color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);padding:3px 0;border-radius:0}
+.ctl select option{background:var(--bg);color:var(--ink)}
+pre{font:11px/1.45 var(--mono);color:var(--mute);white-space:pre-wrap;margin:0 0 16px}
+/* file:// melding: werkt zonder het palet, want dat laadt dan niet. */
+#nofile{display:none;max-width:520px;margin:40px auto;font:15px/1.6 var(--mono);color:CanvasText;background:Canvas;padding:0 28px}
+#nofile code{font-size:14px}
+@media(max-width:760px){main{flex-direction:column;gap:6px;padding:0 16px}aside{width:auto;max-height:40%}.mast{padding:12px 16px 2px}footer{padding:4px 16px 10px}}
+@media(prefers-reduced-motion:reduce){.ln{animation:none}#tip{transition:none}}
+</style>
+<script>
+  // ES modules en fetch werken niet via file://. Toon dan een korte instructie.
+  if (location.protocol === 'file:') {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML = document.getElementById('nofile-tpl').innerHTML;
+      document.body.style.display = 'block';
+      document.body.style.overflow = 'auto';
+      document.getElementById('nofile').style.display = 'block';
+    });
+  }
+</script>
+</head>
+<body>
+<template id="nofile-tpl">
+ <div id="nofile">
+  <p><b>Glio, iso-demo</b></p>
+  <p>Deze pagina gebruikt ES modules en laadt manifesten met fetch. Browsers blokkeren dat als je het bestand direct opent (file://).</p>
+  <p>Start in de repo-map een kleine server:</p>
+  <p><code>python3 -m http.server 8000</code></p>
+  <p>en open <code>http://localhost:8000/iso.html</code></p>
+ </div>
+</template>
+<header class="mast">
+ <div><span class="mono">gliosoom-vormen, iso-demo</span><h1>Glio</h1></div>
+ <nav aria-label="weergave">
+  <a href="#modules" data-view="modules">modules</a>
+  <a href="#demo" data-view="demo">demomodus</a>
+  <a href="#speelveld" data-view="play">speelveld</a>
+  <a href="#" id="th">licht</a>
+ </nav>
+</header>
+<main>
+ <div id="stage">
+  <div class="view" id="v-modules">
+   <svg id="cellsvg" viewBox="0 0 1000 640" role="img" aria-label="De cel met de echte gliosomen en hun bronnen"></svg>
+  </div>
+  <div class="view" id="v-demo">
+   <div class="demo-head"><span class="mono">verzonnen modules, om te zien of de vormen uit elkaar te houden zijn</span><span class="tag">DEMO</span></div>
+   <div class="cards" id="cards"></div>
+  </div>
+  <div class="view" id="v-play">
+   <svg id="playsvg" role="img" aria-label="Live gliosoom uit het speelveld"></svg>
+  </div>
+ </div>
+ <aside id="panel" aria-live="polite"></aside>
+</main>
+<footer class="mono" id="foot"></footer>
+<div id="tip" role="tooltip"></div>
+
+<script type="module">
+import { renderManifest, renderBlock } from './src/iso/index.js';
+import { themeCss, KNOWN_SOURCE_COLORS, DEFAULT_THEME } from './src/iso/palette.js';
+import { connectionColors, sourceLabel, KNOWN_SOURCES } from './src/iso/mapping.js';
+import { describeSchedule, nextRun } from './src/iso/cron.js';
+
+document.getElementById('theme').textContent = themeCss();
+
+const $ = (s) => document.querySelector(s);
+const panel = $('#panel'), tip = $('#tip'), foot = $('#foot');
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const getJson = async (p) => {
+  const r = await fetch(p);
+  if (!r.ok) throw new Error(`${p}: ${r.status}`);
+  return r.json();
+};
+
+// ---------- thema ----------
+const root = document.documentElement;
+function setTheme(t) {
+  root.dataset.theme = t;
+  $('#th').textContent = t === 'dark' ? 'licht' : 'donker';
+  try { localStorage.setItem('glio-theme', t); } catch {}
+}
+let saved = null;
+try { saved = localStorage.getItem('glio-theme'); } catch {}
+setTheme(saved === 'light' || saved === 'dark' ? saved : DEFAULT_THEME);
+$('#th').addEventListener('click', (e) => { e.preventDefault(); setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'); });
+
+// ---------- tekst ----------
+const STATUS_NL = { stable: 'stabiel', dev: 'in ontwikkeling', error: 'fout' };
+const MODE_NL = { fused: 'versmolten', grid: 'losse blokjes' };
+const SYM_NL = { none: 'geen (organisch)', 'mirror-x': 'gespiegeld, 1 as', 'mirror-xy': 'gespiegeld, 2 assen', rotational: 'draaiend, 4-voudig' };
+const perDay = (n) => (n === null ? 'handmatig' : n >= 1 ? `${Math.round(n)}× per dag` : `${(n * 7).toFixed(1).replace('.', ',')}× per week`);
+const fourValues = (m, p) => [
+  `${p.lines} regels`,
+  `${p.connections} ${p.connections === 1 ? 'connectie' : 'connecties'}`,
+  STATUS_NL[p.status],
+  describeSchedule(m.schedule),
+];
+function whenText(d) {
+  if (!d) return 'geen (handmatig)';
+  const min = Math.round((d - Date.now()) / 60000);
+  const hm = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  if (min < 60) return `over ${Math.max(0, min)} min, ${hm}`;
+  if (min < 24 * 60) return `over ${Math.round(min / 60)} uur, ${hm}`;
+  return d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + hm;
+}
+
+// ---------- tooltip ----------
+function bindTip(el, html) {
+  el.addEventListener('pointermove', (e) => {
+    tip.innerHTML = html();
+    tip.style.left = Math.min(e.clientX + 14, innerWidth - 250) + 'px';
+    tip.style.top = e.clientY + 14 + 'px';
+    tip.style.opacity = 1;
+  });
+  el.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+}
+const tipHtml = (m, p) => `<b>${esc(m.name)}</b>${m.demo ? ' <span class="err">demo</span>' : ''}<br>${fourValues(m, p).map(esc).join('<br>')}`;
+
+// ---------- paneel ----------
+let selected = null; // { m, el }
+function select(m, el, view) {
+  if (selected?.el) selected.el.classList.remove('sel');
+  if (selected?.m === m) { selected = null; renderOverview(); return; }
+  selected = { m, el };
+  el?.classList.add('sel');
+  renderModulePanel(m, view);
+}
+function closePanel() {
+  if (selected?.el) selected.el.classList.remove('sel');
+  selected = null;
+  renderOverview();
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selected) closePanel(); });
+panel.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-act]');
+  if (!a) return;
+  e.preventDefault();
+  if (a.dataset.act === 'close') closePanel();
+});
+
+function renderModulePanel(m, view) {
+  const r = renderManifest(m, { idPrefix: `${view}-big-${m.id}-` });
+  const p = r.params, s = r.stats;
+  const talks = (m.connections || []).map((c) => esc(sourceLabel(c.name))).join(', ') || 'niemand';
+  const next = (() => { try { return nextRun(m.schedule); } catch { return null; } })();
+  const warn = p.warnings.length ? `<p class="mono err">${p.warnings.map(esc).join('<br>')}</p>` : '';
+  panel.innerHTML =
+    `<p class="mono">${esc(m.runtime || 'runtime onbekend')}, ${esc(describeSchedule(m.schedule))}${m.demo ? ' · <span class="err">demo</span>' : ''}</p>`
+    + `<h2>${esc(m.name)}</h2>`
+    + `<svg class="big" viewBox="${r.viewBox.join(' ')}" role="img" aria-label="vorm van ${esc(m.name)}">${r.inner}</svg>`
+    + (m.description ? `<p>${esc(m.description)}</p>` : '')
+    + '<dl>'
+    + `<div><dt>status</dt><dd class="${p.status === 'error' ? 'err' : ''}">${STATUS_NL[p.status]}</dd></div>`
+    + '<div><dt>laatste run</dt><dd>—</dd></div>'
+    + `<div><dt>volgende run</dt><dd>${esc(whenText(next))}</dd></div>`
+    + '<div><dt>runs</dt><dd>—</dd></div>'
+    + '<div><dt>geslaagd</dt><dd>—</dd></div>'
+    + '<div><dt>duur</dt><dd>—</dd></div>'
+    + `<div><dt>schema</dt><dd>${m.schedule ? `<code>${esc(m.schedule)}</code>` : 'handmatig'}</dd></div>`
+    + `<div><dt>praat met</dt><dd>${talks}</dd></div>`
+    + `<div><dt>output</dt><dd>${m.output ? `<code>${esc(m.output)}</code>, via rsync` : '—'}</dd></div>`
+    + `<div><dt>vorm</dt><dd><code>${s.seedHash}</code>, ${s.voxels} voxels, ${s.clusters} clusters, ${s.faces} vlakken</dd></div>`
+    + '</dl>'
+    + '<p class="mono">zo lees je de vorm</p><dl>'
+    + `<div><dt>grootte</dt><dd>raster ${p.gridSize} (${p.lines} regels)</dd></div>`
+    + `<div><dt>kleurbanden</dt><dd>${s.bands}: kern + ${s.bands - 1}</dd></div>`
+    + `<div><dt>weergave</dt><dd>${MODE_NL[p.mode]}${p.status === 'error' ? ', foutlijnen' : ''}</dd></div>`
+    + `<div><dt>symmetrie</dt><dd>${SYM_NL[p.symmetry]} (${perDay(p.runsPerDay)})</dd></div>`
+    + '</dl>' + warn
+    + '<p class="mono">Laatste run, runs, geslaagd en duur volgen zodra Glio de module zelf draait.</p>'
+    + '<div class="acts"><a href="#" data-act="close">sluiten</a></div>';
+}
+
+// ---------- weergaven ----------
+const views = {};
+let current = null;
+function show(name) {
+  if (!views[name]) name = 'modules';
+  current = name;
+  for (const a of document.querySelectorAll('nav a[data-view]')) {
+    if (a.dataset.view === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  }
+  for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === `v-${name}`);
+  if (selected?.el) selected.el.classList.remove('sel');
+  selected = null;
+  views[name].enter();
+}
+const viewFromHash = () => ({ '#demo': 'demo', '#speelveld': 'play' }[location.hash] || 'modules');
+let renderOverview = () => {};
+
+// ===== 1. Modules: de echte gliosomen in de cel, met hun bronnen =====
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a = {}, parent) => {
+  const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+const MOD_SCALE = 0.62, SRC_SCALE = 0.8;
+const SRC_POS = { freshrss: [120, 150], orchestrator: [880, 150], gcal: [120, 510], syncthing: [880, 510] };
+const EXTRA_POS = [[500, 66], [500, 610], [52, 330], [948, 330]];
+const SLOTS = [[400, 320], [610, 360], [500, 240], [330, 410], [660, 260]];
+
+function nested(r, cx, cy, scale) {
+  const [, , w, h] = r.viewBox;
+  return `<svg x="${(cx - (w * scale) / 2).toFixed(1)}" y="${(cy - (h * scale) / 2).toFixed(1)}" width="${(w * scale).toFixed(1)}" height="${(h * scale).toFixed(1)}" viewBox="${r.viewBox.join(' ')}" overflow="visible">${r.inner}</svg>`;
+}
+
+function buildCell(svg, mods) {
+  // De cel: tegel met fijne rasterlijnen en een dun membraan.
+  svg.innerHTML =
+    '<path d="M126 330L500 546L500 562L126 346Z" style="fill:color-mix(in srgb,var(--line) 70%,var(--bg))"/>'
+    + '<path d="M500 546L874 330L874 346L500 562Z" style="fill:color-mix(in srgb,var(--line) 90%,var(--shade))"/>'
+    + '<path d="M126 330L500 114L874 330L500 546Z" style="fill:var(--cell);stroke:var(--line)" stroke-width="1"/>';
+  let gd = '';
+  for (let n = 1; n < 18; n++) {
+    const f = n / 18, x = 126 + 374 * f, y = 330 - 216 * f, y2 = 330 + 216 * f;
+    gd += `M${x} ${y}L${x + 374} ${y + 216}M${x} ${y2}L${x + 374} ${y2 - 216}`;
+  }
+  el('path', { d: gd, fill: 'none', style: 'stroke:var(--line)', 'stroke-width': 0.7, opacity: 0.7 }, svg);
+  const gL = el('g', {}, svg), gS = el('g', {}, svg), gM = el('g', {}, svg);
+
+  // Bronnen: alle bekende, plus onbekende die een module gebruikt.
+  const sources = new Map();
+  for (const k of Object.keys(KNOWN_SOURCES)) sources.set(k, { pos: SRC_POS[k], color: KNOWN_SOURCE_COLORS[k] });
+  let extra = 0;
+  for (const m of mods) {
+    const colors = connectionColors(m.connections);
+    m.connections.forEach((c, i) => {
+      const k = c.name.toLowerCase();
+      if (!sources.has(k)) sources.set(k, { pos: EXTRA_POS[extra++ % EXTRA_POS.length], color: colors[i] });
+    });
+  }
+  for (const [k, s] of sources) {
+    const g = el('g', { class: 'src' }, gS);
+    g.innerHTML = nested(renderBlock(s.color, { idPrefix: `src-${k.replace(/\W/g, '_')}-` }), s.pos[0], s.pos[1], SRC_SCALE)
+      + `<text x="${s.pos[0]}" y="${s.pos[1] - 26}" text-anchor="middle">${esc(sourceLabel(k))}</text>`;
+  }
+
+  const placed = mods.map((m, i) => {
+    const r = renderManifest(m, { tile: false, frame: 'fit', idPrefix: `cell-${m.id}-` });
+    const [sx, sy] = SLOTS[i % SLOTS.length];
+    const h = r.viewBox[3] * MOD_SCALE;
+    const g = el('g', { class: 'mod', tabindex: 0, role: 'button', 'aria-label': `${m.name}: ${fourValues(m, r.params).join(', ')}` }, gM);
+    g.innerHTML = nested(r, 0, 0, MOD_SCALE)
+      + `<text class="name" y="${(h / 2 + 16).toFixed(1)}" text-anchor="middle">${esc(m.name)}</text>`
+      + fourValues(m, r.params).map((v, j) => `<text class="vals" y="${(h / 2 + 30 + j * 12).toFixed(1)}" text-anchor="middle">${esc(v)}</text>`).join('');
+    const colors = connectionColors(m.connections);
+    const lines = m.connections.map((c, j) => ({
+      to: sources.get(c.name.toLowerCase()).pos,
+      el: el('path', { class: 'ln', style: `stroke:var(--g${colors[j]}a)` }, gL),
+      off: 30 + j * 14,
+    }));
+    g.addEventListener('click', () => select(m, g, 'modules'));
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(m, g, 'modules'); } });
+    bindTip(g, () => tipHtml(m, r.params));
+    return { m, g, lines, sx, sy, ph: i * 2.1 };
+  });
+  return placed;
+}
+
+function driftLoop(placed) {
+  let running = true;
+  const frame = (T) => {
+    if (!running) return;
+    const t = T / 1000, A = RM ? 0 : 1;
+    for (const p of placed) {
+      const x = p.sx + Math.sin(t * 0.07 * 6.28 + p.ph) * 14 * A;
+      const y = p.sy + Math.cos(t * 0.05 * 6.28 + p.ph * 1.7) * 10 * A;
+      p.g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+      for (const l of p.lines) {
+        const [tx, ty] = l.to, mx = (x + tx) / 2, my = (y + ty) / 2, dx = tx - x, dy = ty - y, len = Math.hypot(dx, dy) || 1;
+        l.el.setAttribute('d', `M${x.toFixed(1)} ${y.toFixed(1)}Q${(mx - (dy / len) * l.off).toFixed(1)} ${(my + (dx / len) * l.off).toFixed(1)} ${tx} ${ty}`);
+      }
+    }
+    if (!RM) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  return () => { running = false; };
+}
+
+let realMods = [];
+let stopDrift = null;
+views.modules = {
+  enter() {
+    foot.textContent = 'Echte modules; een deel van de waarden is nog TODO. De vorm volgt uit het manifest: grootte, connecties, status en schema. Zelfde manifest, zelfde vorm.';
+    renderOverview = () => {
+      panel.innerHTML = '<p class="mono">overzicht</p><h2>Gliosomen in de cel</h2>'
+        + `<p>${realMods.length} modules. Klik op een gliosoom, of kies hem met Tab en Enter, voor details.</p>`
+        + '<p>Gekleurde stippellijnen lopen naar de bronnen waar een module mee praat. Een bron heeft overal dezelfde kleur.</p>';
+    };
+    renderOverview();
+    if (stopDrift) stopDrift();
+    stopDrift = driftLoop(buildCell($('#cellsvg'), realMods));
+  },
+};
+
+// ===== 2. Demomodus =====
+let demoMods = [];
+views.demo = {
+  enter() {
+    if (stopDrift) { stopDrift(); stopDrift = null; }
+    foot.textContent = 'Demo: verzonnen modules uit manifest/demo/. Hover voor de vier waarden, klik voor een groter beeld met stats.';
+    renderOverview = () => {
+      panel.innerHTML = '<p class="mono">demomodus</p><h2>Verzonnen gliosomen</h2>'
+        + `<p>${demoMods.length} modules die niet bestaan. Ze laten zien of je verschillende modules uit elkaar kunt houden.</p>`
+        + '<p>Elke vorm staat op dezelfde vaste tegelmaat, zodat je de grootte kunt vergelijken.</p>';
+    };
+    renderOverview();
+    const cards = $('#cards');
+    cards.innerHTML = '';
+    for (const m of demoMods) {
+      const r = renderManifest(m, { idPrefix: `demo-${m.id}-` });
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.tabIndex = 0;
+      c.setAttribute('role', 'button');
+      c.setAttribute('aria-label', `${m.name}: ${fourValues(m, r.params).join(', ')}`);
+      c.innerHTML = `<svg viewBox="${r.viewBox.join(' ')}" aria-hidden="true">${r.inner}</svg>`
+        + `<div class="name">${esc(m.name)}</div><div class="vals">${fourValues(m, r.params).map(esc).join(' · ')}</div>`;
+      c.addEventListener('click', () => select(m, c, 'demo'));
+      c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(m, c, 'demo'); } });
+      bindTip(c, () => tipHtml(m, r.params));
+      cards.appendChild(c);
+    }
+  },
+};
+
+// ===== 3. Speelveld =====
+const PRESETS = [
+  ['elk kwartier', '*/15 * * * *'],
+  ['elk uur', '0 * * * *'],
+  ['dagelijks', '0 7 * * *'],
+  ['wekelijks', '0 9 * * 1'],
+  ['handmatig', null],
+];
+const PLAY_SOURCES = [
+  { name: 'freshrss', type: 'http' },
+  { name: 'gcal', type: 'http' },
+  { name: 'orchestrator', type: 'webhook' },
+  { name: 'syncthing', type: 'file' },
+  { name: 'extra', type: 'other' },
+];
+// Schuif 0..100 → 10..10000 regels, logaritmisch.
+const sliderToLines = (v) => Math.round(10 * 1000 ** (v / 100));
+const linesToSlider = (l) => Math.round((Math.log(Math.max(10, l) / 10) / Math.log(1000)) * 100);
+
+const play = { id: 'speelveld', lines: 240, conns: 2, status: 'stable', preset: 0 };
+function playManifest() {
+  return {
+    id: play.id,
+    name: 'Speelveld',
+    version: '0.1.0',
+    description: 'Gemaakt in het speelveld van iso.html.',
+    status: play.status,
+    schedule: PRESETS[play.preset][1],
+    connections: PLAY_SOURCES.slice(0, play.conns),
+    size: { lines: play.lines, files: 1 },
+    demo: true,
+  };
+}
+function renderPlay() {
+  const m = playManifest();
+  const r = renderManifest(m, { idPrefix: 'play-' });
+  const svg = $('#playsvg');
+  svg.setAttribute('viewBox', r.viewBox.join(' '));
+  svg.innerHTML = r.inner;
+  const p = r.params, s = r.stats;
+  $('#o-lines').textContent = `${play.lines} → raster ${p.gridSize}`;
+  $('#o-conns').textContent = `${play.conns} → ${s.bands} ${s.bands === 1 ? 'band' : 'banden'}`;
+  $('#o-status').textContent = MODE_NL[p.mode];
+  $('#o-sched').textContent = `${SYM_NL[p.symmetry]}`;
+  $('#play-stats').innerHTML =
+    `<div><dt>praat met</dt><dd>${m.connections.map((c) => esc(sourceLabel(c.name))).join(', ') || 'niemand'}</dd></div>`
+    + `<div><dt>runs</dt><dd>${perDay(p.runsPerDay)}</dd></div>`
+    + `<div><dt>vorm</dt><dd><code>${s.seedHash}</code>, ${s.voxels} voxels, ${s.clusters} clusters, ${s.faces} vlakken</dd></div>`;
+  $('#play-json').textContent = JSON.stringify(m, null, 2);
+  $('#play-warn').innerHTML = p.warnings.map(esc).join('<br>');
+}
+function syncControls() {
+  $('#c-id').value = play.id;
+  $('#c-lines').value = linesToSlider(play.lines);
+  $('#c-conns').value = play.conns;
+  $('#c-status').value = play.status;
+  $('#c-sched').value = play.preset;
+}
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
+    return ok;
+  }
+}
+views.play = {
+  enter() {
+    if (stopDrift) { stopDrift(); stopDrift = null; }
+    foot.textContent = 'Speelveld: verander een waarde en de vorm verandert meteen. De id is de seed: die bepaalt alleen details van de groei.';
+    renderOverview = () => {
+      panel.innerHTML = '<p class="mono">speelveld</p><h2>Maak een gliosoom</h2>'
+        + '<div class="ctl"><label for="c-id">id (seed)</label><input id="c-id" type="text" spellcheck="false" autocomplete="off"></div>'
+        + '<div class="ctl"><label for="c-lines">regels code <output id="o-lines"></output></label><input id="c-lines" type="range" min="0" max="100"></div>'
+        + '<div class="ctl"><label for="c-conns">connecties <output id="o-conns"></output></label><input id="c-conns" type="range" min="0" max="5"></div>'
+        + `<div class="ctl"><label for="c-status">status <output id="o-status"></output></label><select id="c-status">${Object.keys(STATUS_NL).map((k) => `<option value="${k}">${k}: ${STATUS_NL[k]}</option>`).join('')}</select></div>`
+        + `<div class="ctl"><label for="c-sched">schema <output id="o-sched"></output></label><select id="c-sched">${PRESETS.map(([l, c], i) => `<option value="${i}">${l}${c ? ` (${c})` : ''}</option>`).join('')}</select></div>`
+        + '<dl id="play-stats" style="margin-top:12px"></dl>'
+        + '<p class="mono err" id="play-warn"></p>'
+        + '<div class="acts"><a href="#" id="a-rand">willekeurig manifest</a><a href="#" id="a-copy">kopieer manifest-JSON</a></div>'
+        + '<pre id="play-json"></pre>';
+      syncControls();
+      $('#c-id').addEventListener('input', (e) => {
+        const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+/, '');
+        play.id = v || 'speelveld';
+        renderPlay();
+      });
+      $('#c-lines').addEventListener('input', (e) => { play.lines = sliderToLines(Number(e.target.value)); renderPlay(); });
+      $('#c-conns').addEventListener('input', (e) => { play.conns = Number(e.target.value); renderPlay(); });
+      $('#c-status').addEventListener('change', (e) => { play.status = e.target.value; renderPlay(); });
+      $('#c-sched').addEventListener('change', (e) => { play.preset = Number(e.target.value); renderPlay(); });
+      $('#a-rand').addEventListener('click', (e) => {
+        e.preventDefault();
+        play.id = 'mod-' + Math.random().toString(36).slice(2, 7);
+        play.lines = sliderToLines(Math.floor(Math.random() * 101));
+        play.conns = Math.floor(Math.random() * 6);
+        play.status = Object.keys(STATUS_NL)[Math.floor(Math.random() * 3)];
+        play.preset = Math.floor(Math.random() * PRESETS.length);
+        syncControls();
+        renderPlay();
+      });
+      $('#a-copy').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const ok = await copyText(JSON.stringify(playManifest(), null, 2) + '\n');
+        e.target.textContent = ok ? 'gekopieerd' : 'kopiëren lukte niet';
+        setTimeout(() => { e.target.textContent = 'kopieer manifest-JSON'; }, 1600);
+      });
+      renderPlay();
+    };
+    renderOverview();
+  },
+};
+
+// ---------- start ----------
+for (const a of document.querySelectorAll('nav a[data-view]')) {
+  a.addEventListener('click', () => { /* hashchange doet de rest */ });
+}
+addEventListener('hashchange', () => show(viewFromHash()));
+
+try {
+  realMods = await Promise.all(['digest', 'google-agenda'].map((id) => getJson(`manifest/examples/${id}.json`)));
+  const index = await getJson('manifest/demo/index.json');
+  demoMods = await Promise.all(index.files.map((f) => getJson(`manifest/demo/${f}`)));
+  show(viewFromHash());
+} catch (err) {
+  panel.innerHTML = `<p class="mono err">Kon de manifesten niet laden: ${esc(err.message)}</p>`;
+  console.error(err);
+}
+</script>
+</body>
+</html>
