@@ -1,0 +1,18 @@
+{
+  "id": "demo-huis-brug",
+  "name": "Huis-brug (demo)",
+  "version": "2.0.3",
+  "description": "Demo, verzonnen. Vertaalt elke minuut sensorwaarden en stuurt ze door.",
+  "runtime": "Node",
+  "status": "stable",
+  "schedule": "* * * * *",
+  "connections": [
+    { "name": "home-assistant", "type": "webhook" },
+    { "name": "mqtt", "type": "other" },
+    { "name": "orchestrator", "type": "webhook" },
+    { "name": "syncthing", "type": "file" }
+  ],
+  "output": "huis.json",
+  "size": { "lines": 2450, "files": 14 },
+  "demo": true
+}

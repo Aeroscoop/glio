@@ -1,0 +1,16 @@
+{
+  "id": "demo-rss-archief",
+  "name": "RSS-archief (demo)",
+  "version": "0.1.0-dev",
+  "description": "Demo, verzonnen. Archiveert gelezen artikelen elk uur. Nog in ontwikkeling.",
+  "runtime": "Python",
+  "status": "dev",
+  "schedule": "0 * * * *",
+  "connections": [
+    { "name": "freshrss", "type": "http" },
+    { "name": "syncthing", "type": "file" }
+  ],
+  "output": "archief.json",
+  "size": { "lines": 410, "files": 4 },
+  "demo": true
+}

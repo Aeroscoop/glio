@@ -1,0 +1,12 @@
+{
+  "description": "Verzonnen demomodules voor de demomodus van iso.html. Geen echte modules.",
+  "files": [
+    "demo-weerstation.json",
+    "demo-foto-backup.json",
+    "demo-factuur-mailer.json",
+    "demo-rss-archief.json",
+    "demo-huis-brug.json",
+    "demo-log-opruimer.json",
+    "demo-uptime-wacht.json"
+  ]
+}

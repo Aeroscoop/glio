@@ -1,0 +1,16 @@
+{
+  "id": "digest",
+  "name": "Digest check",
+  "version": "0.1.0",
+  "description": "Telt ongelezen artikelen in FreshRSS en weegt ze per categorie (script check_digest). TODO: controleren; runtime, schema, connecties, output, status en size komen uit het ontwerp met nepdata. Size is een schatting: draai tools/measure.js op check_digest.",
+  "runtime": "Python",
+  "status": "stable",
+  "schedule": "*/30 * * * *",
+  "connections": [
+    { "name": "freshrss", "type": "http" },
+    { "name": "syncthing", "type": "file" }
+  ],
+  "output": "status.json",
+  "size": { "lines": 240, "files": 1 },
+  "demo": false
+}

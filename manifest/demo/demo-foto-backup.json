@@ -1,0 +1,14 @@
+{
+  "id": "demo-foto-backup",
+  "name": "Foto-backup (demo)",
+  "version": "1.2.0",
+  "description": "Demo, verzonnen. Maakt met de hand een kopie van de fotomap.",
+  "runtime": "Bash",
+  "status": "stable",
+  "schedule": null,
+  "connections": [
+    { "name": "nas", "type": "file" }
+  ],
+  "size": { "lines": 60, "files": 1 },
+  "demo": true
+}

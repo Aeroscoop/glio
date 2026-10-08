@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Aeroscoop/glio/manifest/gliosoom.schema.json",
+  "title": "Gliosoom-manifest",
+  "description": "Beschrijft één Glio-module (gliosoom). De vorm van de module wordt hier automatisch uit gemaakt.",
+  "type": "object",
+  "required": ["id", "name", "version", "status", "schedule", "connections"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Uniek, kleine letters, cijfers en streepjes. Is ook de seed voor de vorm.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$"
+    },
+    "description": { "type": "string" },
+    "runtime": {
+      "description": "Waarin de module draait, bijv. Python of Node.",
+      "type": "string"
+    },
+    "status": { "enum": ["stable", "dev", "error"] },
+    "schedule": {
+      "description": "Cron-string (5 velden of @hourly/@daily/@weekly/@monthly/@yearly). null = handmatig.",
+      "type": ["string", "null"]
+    },
+    "connections": {
+      "description": "Met wie de module praat. De volgorde bepaalt de kleurband (binnen naar buiten).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["file", "http", "webhook", "exec", "other"] }
+        }
+      }
+    },
+    "output": {
+      "description": "Bestand dat de module schrijft (gaat via rsync naar de Syncthing-LXC).",
+      "type": "string"
+    },
+    "size": {
+      "description": "Gevuld door tools/measure.js.",
+      "type": "object",
+      "required": ["lines", "files"],
+      "additionalProperties": false,
+      "properties": {
+        "lines": { "type": "integer", "minimum": 0 },
+        "files": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "demo": {
+      "description": "true voor verzonnen demomodules.",
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

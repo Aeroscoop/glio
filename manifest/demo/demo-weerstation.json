@@ -1,0 +1,16 @@
+{
+  "id": "demo-weerstation",
+  "name": "Weerstation (demo)",
+  "version": "0.3.1",
+  "description": "Demo, verzonnen. Haalt elk kwartier weerdata op en zet die klaar voor het dashboard.",
+  "runtime": "Python",
+  "status": "stable",
+  "schedule": "*/15 * * * *",
+  "connections": [
+    { "name": "weer-api", "type": "http" },
+    { "name": "syncthing", "type": "file" }
+  ],
+  "output": "weer.json",
+  "size": { "lines": 85, "files": 1 },
+  "demo": true
+}

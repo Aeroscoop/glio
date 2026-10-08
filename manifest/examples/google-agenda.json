@@ -1,0 +1,16 @@
+{
+  "id": "google-agenda",
+  "name": "Google Agenda",
+  "version": "0.1.0",
+  "description": "Leest twee iCal-feeds van Google Calendar (afspraken en blokken) en schrijft agenda.json. TODO: controleren; runtime, schema, connecties, output, status en size komen uit het ontwerp met nepdata. Size is een schatting: draai tools/measure.js op de modulemap.",
+  "runtime": "Node",
+  "status": "stable",
+  "schedule": "*/5 * * * *",
+  "connections": [
+    { "name": "gcal", "type": "http" },
+    { "name": "syncthing", "type": "file" }
+  ],
+  "output": "agenda.json",
+  "size": { "lines": 180, "files": 2 },
+  "demo": false
+}

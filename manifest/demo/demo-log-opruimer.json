@@ -1,0 +1,14 @@
+{
+  "id": "demo-log-opruimer",
+  "name": "Log-opruimer (demo)",
+  "version": "0.9.0",
+  "description": "Demo, verzonnen. Ruimt elke nacht oude logbestanden op.",
+  "runtime": "Bash",
+  "status": "dev",
+  "schedule": "30 3 * * *",
+  "connections": [
+    { "name": "lxc-logs", "type": "exec" }
+  ],
+  "size": { "lines": 140, "files": 2 },
+  "demo": true
+}

@@ -1,0 +1,19 @@
+{
+  "id": "demo-uptime-wacht",
+  "name": "Uptime-wacht (demo)",
+  "version": "1.0.0",
+  "description": "Demo, verzonnen. Pingt elke vijf minuten alle diensten en meldt wie niet antwoordt.",
+  "runtime": "Python",
+  "status": "stable",
+  "schedule": "*/5 * * * *",
+  "connections": [
+    { "name": "orchestrator", "type": "webhook" },
+    { "name": "gcal", "type": "http" },
+    { "name": "freshrss", "type": "http" },
+    { "name": "syncthing", "type": "file" },
+    { "name": "ntfy", "type": "http" }
+  ],
+  "output": "uptime.json",
+  "size": { "lines": 5200, "files": 21 },
+  "demo": true
+}
