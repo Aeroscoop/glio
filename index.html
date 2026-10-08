@@ -3,1087 +3,1694 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Isometric Vector Shape Generator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Glio - Cellular Hub & Event System</title>
   <style>
-    /* Custom scrollbar and grid transitions */
-    ::-webkit-scrollbar {
+    :root {
+      /* Default Light Microscope Theme (Kurzgesagt Bright-Field) */
+      --bg-dark: #e8ecf2;
+      --bg-cytoplasm: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-panel-transparent: rgba(255, 255, 255, 0.88);
+      --bg-card: rgba(255, 255, 255, 0.94);
+      --border-color: rgba(15, 23, 42, 0.15);
+      --border-bright: rgba(14, 165, 233, 0.45);
+
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+
+      --accent-cyan: #0284c7;
+      --accent-cyan-glow: rgba(2, 132, 199, 0.25);
+      --accent-amber: #d97706;
+      --accent-emerald: #059669;
+      --accent-rose: #e11d48;
+      --accent-violet: #7c3aed;
+
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body.dark-mode {
+      /* Dark Microscope Theme */
+      --bg-dark: #090a0f;
+      --bg-cytoplasm: #090a0f;
+      --bg-panel: #12151e;
+      --bg-panel-transparent: rgba(18, 21, 30, 0.82);
+      --bg-card: rgba(22, 27, 38, 0.90);
+      --border-color: rgba(255, 255, 255, 0.12);
+      --border-bright: rgba(0, 240, 255, 0.35);
+
+      --text-main: #f0f4f8;
+      --text-muted: #8a99ad;
+      --text-dim: #505c6e;
+
+      --accent-cyan: #00f0ff;
+      --accent-cyan-glow: rgba(0, 240, 255, 0.3);
+      --accent-amber: #ffb703;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-violet: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Fullscreen Canvas */
+    #gl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      transition: filter 0.5s ease;
+    }
+
+    body.microscope-focused #gl-canvas {
+      filter: blur(14px) brightness(0.65) contrast(1.1);
+    }
+
+    /* UI Container Layer */
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Header Bar */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel-transparent);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle {
+      background: rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(0, 0, 0, 0.1);
+      border-color: var(--accent-cyan);
+    }
+
+    body.dark-mode .theme-toggle {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .brand-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      animation: pulse-glow 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 16px var(--accent-cyan); }
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 2px;
+      color: var(--text-main);
+      text-transform: uppercase;
+    }
+
+    .brand-subtitle {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: var(--accent-cyan);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      box-shadow: 0 0 16px var(--accent-cyan);
+    }
+
+    .select-input {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .select-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Footer Status Bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel-transparent);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-items {
+      display: flex;
+      gap: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
       width: 6px;
       height: 6px;
+      border-radius: 50%;
     }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
+
+    .status-dot.healthy { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+    .status-dot.warning { background: var(--accent-amber); box-shadow: 0 0 6px var(--accent-amber); }
+    .status-dot.active { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+
+    /* Floating Microscope HUD Reticle */
+    .viewfinder-hud {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      height: 85%;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      pointer-events: none;
+      z-index: 2;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 3px;
+
+    .viewfinder-corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(0, 240, 255, 0.4);
+      border-style: solid;
     }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+
+    .corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+    .corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+    .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+    .corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+    /* Hover HUD Card */
+    #hover-hud {
+      position: absolute;
+      pointer-events: none;
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      padding: 12px;
+      width: 240px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 50;
     }
-    .grid-cell-active {
-      ring-width: 2px;
-      ring-color: #3b82f6;
-      border-color: #3b82f6 !important;
-      background-color: #eff6ff !important;
+
+    #hover-hud.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hud-header {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+
+    .hud-label { color: var(--text-muted); }
+    .hud-value { color: var(--text-main); font-weight: 500; }
+
+    /* Modal / Popover Overlay Layer */
+    #popover-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #popover-layer.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .popover-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      width: 680px;
+      max-width: 90vw;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.15);
+      overflow: hidden;
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #popover-layer.active .popover-card {
+      transform: scale(1);
+    }
+
+    .popover-header {
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .popover-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .popover-body {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .popover-footer {
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Monospaced Code Editor View */
+    .code-editor-wrapper {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #090b10;
+      overflow: hidden;
+    }
+
+    .code-editor-header {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    textarea.code-editor {
+      width: 100%;
+      height: 220px;
+      background: transparent;
+      border: none;
+      color: #7dd3fc;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 12px;
+      resize: vertical;
+      outline: none;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+
+    /* Form Fields in Popovers */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .form-input {
+      background: #0d1017;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Terminal Output Styling */
+    .terminal-container {
+      background: #050608;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #38bdf8;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Startup Viewfinder Calibration Screen Overlay */
+    #startup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #050609;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    #startup-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .microscope-lens-ring {
+      width: 220px;
+      height: 220px;
+      border: 2px dashed var(--accent-cyan);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: spin-ring 12s linear infinite;
+    }
+
+    @keyframes spin-ring {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .lens-inner-circle {
+      width: 170px;
+      height: 170px;
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, transparent 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px var(--accent-cyan-glow);
+    }
+
+    .startup-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--accent-cyan);
+      margin-top: 32px;
+      text-transform: uppercase;
+    }
+
+    .startup-log {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      height: 20px;
+      letter-spacing: 1px;
+    }
+
+    .progress-bar-track {
+      width: 280px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: 16px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      transition: width 0.1s linear;
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+<body>
 
-  <!-- Top Header Navigation -->
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-30">
-    <div class="flex items-center space-x-3">
-      <div class="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-        </svg>
-      </div>
-      <div>
-        <h1 class="text-xl font-bold tracking-tight text-slate-900">IsoFusion Studio</h1>
-        <p class="text-xs text-slate-500">Color-Based Region Fusion Isometric Vector Generator</p>
+  <!-- Startup Microscope Viewfinder Boot Screen -->
+  <div id="startup-overlay">
+    <div class="microscope-lens-ring">
+      <div class="lens-inner-circle">
+        <span style="font-size: 24px; color: var(--accent-cyan); font-weight: bold;">GLIO</span>
       </div>
     </div>
-
-    <!-- Quick Mode Toggle Header Controls -->
-    <div class="flex items-center space-x-4">
-      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-        <button id="modeFusedBtn" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-          <span>Fused Mode</span>
-        </button>
-        <button id="modeUnfusedBtn" class="px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm bg-white text-blue-600 transition-all flex items-center space-x-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-          <span>Grid Mode</span>
-        </button>
-      </div>
-
-      <button id="randomizeAllBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium rounded-xl shadow-sm transition flex items-center space-x-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-        <span>Randomize Seed</span>
-      </button>
+    <div class="startup-title">GLIO MICROSCOPE INITIALIZATION</div>
+    <div class="startup-log" id="startup-log-text">Calibrating focal lens plane...</div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="startup-progress"></div>
     </div>
-  </header>
-
-  <!-- Main App Layout -->
-  <div class="flex-1 flex overflow-hidden">
-
-    <!-- Left Controls Sidebar -->
-    <aside class="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto shrink-0 shadow-sm">
-      <div class="p-5 space-y-6">
-
-        <!-- Seed Input Section -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Seed String</label>
-          <div class="flex space-x-2">
-            <input type="text" id="seedInput" value="isofusion-core" class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono">
-            <button id="regenSeedBtn" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition" title="New Random Seed">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Grid & Voxel Dimensions -->
-        <div class="space-y-4 pt-2 border-t border-slate-100">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Grid & Structure</h3>
-
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <label for="gridSizeRange" class="text-xs font-semibold text-slate-700">Grid Size (3D)</label>
-              <span id="gridSizeVal" class="text-xs font-bold text-blue-600 font-mono">4 x 4 x 4</span>
-            </div>
-            <input type="range" id="gridSizeRange" min="3" max="7" value="4" step="1" class="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer">
-          </div>
-
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <label for="densityRange" class="text-xs font-semibold text-slate-700">Voxel Fill Density</label>
-              <span id="densityVal" class="text-xs font-bold text-blue-600 font-mono">55%</span>
-            </div>
-            <input type="range" id="densityRange" min="25" max="85" value="55" step="5" class="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer">
-          </div>
-
-          <div>
-            <label for="symmetrySelect" class="block text-xs font-semibold text-slate-700 mb-1">Symmetry Rule</label>
-            <select id="symmetrySelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="none" selected>None (Organic)</option>
-              <option value="mirror-x">X-Axis Mirror</option>
-              <option value="mirror-xy">XY Dual Mirror</option>
-              <option value="rotational">Rotational (4-Fold)</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Palette & Color Assignment -->
-        <div class="space-y-4 pt-2 border-t border-slate-100">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Color & Palette</h3>
-
-          <div>
-            <label for="paletteSelect" class="block text-xs font-semibold text-slate-700 mb-1">Color Palette</label>
-            <select id="paletteSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="cyberpunk" selected>Cyberpunk Neon</option>
-              <option value="pastel">Pastel Sunset</option>
-              <option value="emerald">Emerald Forest</option>
-
-              <option value="tech">Monochrome Tech</option>
-              <option value="warmth">Warm Isometric</option>
-              <option value="ocean">Deep Ocean</option>
-            </select>
-          </div>
-
-          <!-- Active Palette Swatches Preview -->
-          <div id="paletteSwatches" class="flex h-6 rounded-lg overflow-hidden border border-slate-200 shadow-inner">
-            <!-- Rendered dynamically -->
-          </div>
-
-          <div>
-            <label for="colorStrategySelect" class="block text-xs font-semibold text-slate-700 mb-1">Color Grouping Strategy</label>
-            <select id="colorStrategySelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="height">Height Bands (Z-Layers)</option>
-              <option value="radial" selected>Radial Distance</option>
-              <option value="clusters">Connected Clusters</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="fusionTypeSelect" class="block text-xs font-semibold text-slate-700 mb-1">3D Fusion Awareness</label>
-            <select id="fusionTypeSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="coplanar" selected>3D Coplanar Planes (Strict 3D)</option>
-              <option value="projection">2D Flat Projection Union</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Stroke & Outline Controls -->
-        <div class="space-y-4 pt-2 border-t border-slate-100">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Stroke & Style</h3>
-
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-700">Show Outline Strokes</span>
-            <input type="checkbox" id="strokeToggle" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 accent-blue-600">
-          </div>
-
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <label for="strokeWidthRange" class="text-xs font-semibold text-slate-700">Stroke Width</label>
-              <span id="strokeWidthVal" class="text-xs font-bold text-blue-600 font-mono">1.2px</span>
-            </div>
-            <input type="range" id="strokeWidthRange" min="0.5" max="3.5" value="1.2" step="0.1" class="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer">
-          </div>
-
-          <div>
-            <label for="strokeColorSelect" class="block text-xs font-semibold text-slate-700 mb-1">Stroke Color</label>
-            <select id="strokeColorSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="#0f172a" selected>Dark Slate (#0f172a)</option>
-              <option value="#334155">Slate (#334155)</option>
-              <option value="#ffffff">White (#ffffff)</option>
-              <option value="auto">Auto Contrast Shade</option>
-            </select>
-          </div>
-        </div>
-
-      </div>
-    </aside>
-
-    <!-- Center Workspace & Matrix View -->
-    <main class="flex-1 flex flex-col overflow-y-auto p-6 space-y-6 bg-slate-50">
-
-      <!-- View Selector & Title -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-slate-900">4x4 Matrix Variations</h2>
-          <p class="text-xs text-slate-500">16 deterministic shape variations generated from seed. Click any cell to inspect in detail.</p>
-        </div>
-        <div class="text-xs text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm flex items-center space-x-2">
-          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Mode: <strong id="currentModeLabel" class="text-slate-800 font-semibold">Grid Mode (Unfused)</strong></span>
-        </div>
-      </div>
-
-      <!-- 4x4 Grid Matrix Container -->
-      <div id="gridMatrix" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <!-- 16 SVG Cells generated dynamically -->
-      </div>
-
-    </main>
-
-    <!-- Right Inspector Panel -->
-    <aside class="w-96 bg-white border-l border-slate-200 flex flex-col overflow-y-auto shrink-0 shadow-sm">
-      <div class="p-6 flex flex-col h-full space-y-6">
-
-        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div>
-            <h2 class="text-base font-bold text-slate-900">Inspector View</h2>
-            <p id="inspectorCellTitle" class="text-xs text-slate-500 font-mono">Cell Variation #1</p>
-          </div>
-          <span id="inspectorBadge" class="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-600 rounded-md border border-blue-100">Selected</span>
-        </div>
-
-        <!-- Large Main Inspector Preview Frame -->
-        <div class="bg-gradient-to-b from-slate-50 to-slate-100/60 border border-slate-200 rounded-2xl p-6 flex items-center justify-center min-h-[300px] shadow-inner relative group">
-          <div id="inspectorSvgContainer" class="w-full h-64 flex items-center justify-center">
-            <!-- Enlarged Interactive SVG rendered here -->
-          </div>
-        </div>
-
-        <!-- Voxel Statistics & Info Box -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Shape Statistics</h3>
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block mb-0.5">Active Voxels</span>
-              <span id="statVoxelCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
-            </div>
-            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block mb-0.5">Color Clusters</span>
-              <span id="statClusterCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
-            </div>
-            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block mb-0.5">Visible Faces</span>
-              <span id="statFaceCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
-            </div>
-            <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-              <span class="text-slate-400 block mb-0.5">Boundary Loops</span>
-              <span id="statLoopCount" class="text-slate-800 font-bold font-mono text-sm">0</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Information & Algorithm Overview Card -->
-        <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-4 text-xs text-blue-900 space-y-2">
-          <div class="flex items-center space-x-2 font-semibold text-blue-800">
-            <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 1 9 0 0118 0z"></path></svg>
-            <span>Color Region Fusion Logic</span>
-          </div>
-          <p class="leading-relaxed text-blue-800/80">
-            Adjacent voxels with matching color IDs are grouped into Connected Component Clusters. Internal face borders are automatically cancelled, merging coplanar planes into unified 2D vector boundaries with continuous linear gradients.
-          </p>
-        </div>
-
-      </div>
-    </aside>
-
   </div>
 
-  <script>
-    // =========================================================================
-    // 1. PRNG & SEEDING ALGORITHMS (cyrb128 + sfc32)
-    // =========================================================================
-    function cyrb128(str) {
-      let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-      for (let i = 0, k; i < str.length; i++) {
-        k = str.charCodeAt(i);
-        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-        h2 = h3 ^ Math.imul(h2 ^ k, 286986023);
-        h3 = h4 ^ Math.imul(h4 ^ k, 951274213);
-        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-      }
-      h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
-      h2 = Math.imul(h4 ^ (h2 >>> 22), 286986023);
-      h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
-      h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-      return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
-    }
+  <!-- Background Simulation Canvas -->
+  <canvas id="gl-canvas"></canvas>
 
-    function sfc32(a, b, c, d) {
-      return function() {
-        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
-        let t = (a + b | 0) + d | 0;
-        d = d + 1 | 0;
-        a = b ^ b >>> 9;
-        b = c + (c << 3) | 0;
-        c = c << 21 | c >>> 11;
-        c = c + t | 0;
-        return (t >>> 0) / 4294967296;
+  <!-- Microscope HUD Reticle Frame -->
+  <div class="viewfinder-hud">
+    <div class="viewfinder-corner corner-tl"></div>
+    <div class="viewfinder-corner corner-tr"></div>
+    <div class="viewfinder-corner corner-bl"></div>
+    <div class="viewfinder-corner corner-br"></div>
+  </div>
+
+  <!-- UI Overlay Layer -->
+  <div id="ui-layer">
+    <!-- Top Header -->
+    <header class="header-bar interactive">
+      <div class="brand">
+        <div class="brand-icon"></div>
+        <div>
+          <span class="brand-title">GLIO CORE</span>
+          <span class="brand-subtitle">v2.4.0-cellular</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <button class="theme-toggle" id="btn-theme-toggle">
+          <span id="theme-icon">☀️</span>
+          <span id="theme-text">LIGHT MODE</span>
+        </button>
+        <label for="event-source-select" style="color: var(--text-muted); font-size: 11px;">SOURCE:</label>
+        <select id="event-source-select" class="select-input">
+          <!-- Populated dynamically -->
+        </select>
+        <button class="btn btn-primary" id="btn-simulate-event">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          SIMULATE EVENT
+        </button>
+      </div>
+    </header>
+
+    <!-- Bottom Status Bar -->
+    <footer class="status-bar interactive">
+      <div class="status-items">
+        <div class="status-item">
+          <span class="status-dot healthy"></span>
+          <span>NUCLEUS: OPTIMAL</span>
+        </div>
+        <div class="status-item">
+          <span class="status-dot active"></span>
+          <span>GLIOSOMES: <span id="stat-active-count">5</span> ONLINE</span>
+        </div>
+        <div class="status-item">
+          <span class="status-dot healthy"></span>
+          <span>MEMBRANE GATEWAY: ACTIVE</span>
+        </div>
+      </div>
+      <div>
+        <span>FPS: <span id="stat-fps">60</span></span> |
+        <span>VESICLES IN TRANSIT: <span id="stat-vesicles">0</span></span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Hover HUD Card -->
+  <div id="hover-hud">
+    <div class="hud-header">
+      <span id="hud-name">GLIOSOME</span>
+      <span id="hud-status-badge" style="color: var(--accent-emerald);">HEALTHY</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">CRON SCHEDULE:</span>
+      <span class="hud-value" id="hud-cron">*/5 * * * *</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">LAST EXECUTION:</span>
+      <span class="hud-value" id="hud-last-run">12s ago</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">EXEC TIME:</span>
+      <span class="hud-value" id="hud-exec-time">42ms</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">SCRIPT HASH:</span>
+      <span class="hud-value" id="hud-hash">#8f3a9e</span>
+    </div>
+  </div>
+
+  <!-- Popover / Focus Overlay Modal -->
+  <div id="popover-layer">
+    <div class="popover-card" id="popover-content">
+      <!-- Dynamic popover content injected here -->
+    </div>
+  </div>
+
+  <!-- Application Script -->
+  <script>
+    // --- GLIO CELLULAR SIMULATION ENGINE ---
+
+    // State Management
+    const state = {
+      time: 0,
+      fps: 60,
+      lastFrameTime: performance.now(),
+      frameCount: 0,
+      fpsTimer: performance.now(),
+      isDarkMode: false,
+      isStartupComplete: false,
+      isFocused: false,
+      focusedEntity: null,
+      hoveredEntity: null,
+      draggedEntity: null,
+      dragOffset: { x: 0, y: 0 },
+      mouse: { x: 0, y: 0 },
+      canvasSize: { width: window.innerWidth, height: window.innerHeight },
+      vesicles: [],
+      gliosomes: []
+    };
+
+    // Theme Switcher Logic
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+
+    themeBtn.addEventListener('click', () => {
+      state.isDarkMode = !state.isDarkMode;
+      if (state.isDarkMode) {
+        document.body.classList.add('dark-mode');
+        themeIcon.innerText = '🌙';
+        themeText.innerText = 'DARK MODE';
+      } else {
+        document.body.classList.remove('dark-mode');
+        themeIcon.innerText = '☀️';
+        themeText.innerText = 'LIGHT MODE';
+      }
+    });
+
+    // Canvas Setup
+    const canvas = document.getElementById('gl-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      state.canvasSize.width = window.innerWidth;
+      state.canvasSize.height = window.innerHeight;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Glio Core (Nucleus Position & Radius)
+    function getCorePosition() {
+      return {
+        x: state.canvasSize.width * 0.22,
+        y: state.canvasSize.height * 0.5,
+        radius: Math.min(state.canvasSize.width, state.canvasSize.height) * 0.16
       };
     }
 
-    function createRNG(seedStr) {
-      const seed = cyrb128(seedStr);
-      return sfc32(seed[0], seed[1], seed[2], seed[3]);
+    // Cell Membrane (Wall) Curve Parameters
+    function getMembranePath(time) {
+      const w = state.canvasSize.width;
+      const h = state.canvasSize.height;
+      const xBase = w * 0.88;
+      const points = [];
+      const steps = 30;
+
+      for (let i = 0; i <= steps; i++) {
+        const y = (h / steps) * i;
+        const wave1 = Math.sin(y * 0.008 + time * 0.8) * 16;
+        const wave2 = Math.cos(y * 0.015 - time * 0.5) * 8;
+        const x = xBase + wave1 + wave2;
+        points.push({ x, y });
+      }
+      return points;
     }
 
-    // =========================================================================
-    // 2. PALETTES DEFINITION
-    // =========================================================================
-    const PALETTES = {
-      cyberpunk: {
-        name: "Cyberpunk Neon",
-        colors: [
-          { stop1: "#ff007f", stop2: "#7928ca" },
-          { stop1: "#00f2fe", stop2: "#4facfe" },
-          { stop1: "#f9d423", stop2: "#ff4e50" },
-          { stop1: "#00b09b", stop2: "#96c93d" }
-        ]
-      },
-      pastel: {
-        name: "Pastel Sunset",
-        colors: [
-          { stop1: "#ff9a9e", stop2: "#fecfef" },
-          { stop1: "#a1c4fd", stop2: "#c2e9fb" },
-          { stop1: "#f6d365", stop2: "#fda085" },
-          { stop1: "#d4fc79", stop2: "#96e6a1" }
-        ]
-      },
-      emerald: {
-        name: "Emerald Forest",
-        colors: [
-          { stop1: "#11998e", stop2: "#38ef7d" },
-          { stop1: "#0575e6", stop2: "#00f260" },
-          { stop1: "#8e2de2", stop2: "#4a00e0" },
-          { stop1: "#f12711", stop2: "#f5af19" }
-        ]
-      },
-      tech: {
-        name: "Monochrome Tech",
-        colors: [
-          { stop1: "#243b55", stop2: "#141e30" },
-          { stop1: "#4b6cb7", stop2: "#182848" },
-          { stop1: "#8e9eab", stop2: "#eef2f3" },
-          { stop1: "#3a6073", stop2: "#3a7bd5" }
-        ]
-      },
-      warmth: {
-        name: "Warm Isometric",
-        colors: [
-          { stop1: "#f83600", stop2: "#f9d423" },
-          { stop1: "#e14ebe", stop2: "#f05654" },
-          { stop1: "#ff512f", stop2: "#dd2476" },
-          { stop1: "#ff8c00", stop2: "#e52d27" }
-        ]
-      },
-      ocean: {
-        name: "Deep Ocean",
-        colors: [
-          { stop1: "#2b5876", stop2: "#4e4376" },
-          { stop1: "#00c6ff", stop2: "#0072ff" },
-          { stop1: "#20002c", stop2: "#cbb4d4" },
-          { stop1: "#13547a", stop2: "#80d0c7" }
-        ]
+    // Draw Cytoplasm Granules (Floating Ribosomes, Solutes, Nutrients)
+    function drawCytoplasmGranules(time) {
+      ctx.save();
+      const numGranules = 45;
+      const w = state.canvasSize.width;
+      const h = state.canvasSize.height;
+
+      for (let i = 0; i < numGranules; i++) {
+        const seed = i * 997;
+        const xBase = ((seed * 13) % w);
+        const yBase = ((seed * 37) % h);
+
+        const x = xBase + Math.sin(time * 0.4 + i) * 15;
+        const y = yBase + Math.cos(time * 0.3 + i) * 15;
+        const r = 1.5 + (i % 3);
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = state.isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
+        ctx.fill();
       }
-    };
-
-    // =========================================================================
-    // 3. APPLICATION STATE & INITIALIZATION
-    // =========================================================================
-    const state = {
-      seed: "isofusion-core",
-      gridSize: 4,
-      density: 0.55,
-      symmetry: "none",
-      paletteKey: "cyberpunk",
-      colorStrategy: "radial",
-      fusionType: "coplanar",
-      isFused: false,
-      showStroke: false,
-      strokeWidth: 1.2,
-      strokeColor: "#0f172a",
-      selectedCellIndex: 0
-    };
-
-    // DOM Elements
-    const seedInput = document.getElementById("seedInput");
-    const regenSeedBtn = document.getElementById("regenSeedBtn");
-    const randomizeAllBtn = document.getElementById("randomizeAllBtn");
-
-    const gridSizeRange = document.getElementById("gridSizeRange");
-    const gridSizeVal = document.getElementById("gridSizeVal");
-    const densityRange = document.getElementById("densityRange");
-    const densityVal = document.getElementById("densityVal");
-    const symmetrySelect = document.getElementById("symmetrySelect");
-
-    const paletteSelect = document.getElementById("paletteSelect");
-    const paletteSwatches = document.getElementById("paletteSwatches");
-    const colorStrategySelect = document.getElementById("colorStrategySelect");
-    const fusionTypeSelect = document.getElementById("fusionTypeSelect");
-
-    const strokeToggle = document.getElementById("strokeToggle");
-    const strokeWidthRange = document.getElementById("strokeWidthRange");
-    const strokeWidthVal = document.getElementById("strokeWidthVal");
-    const strokeColorSelect = document.getElementById("strokeColorSelect");
-
-    const modeFusedBtn = document.getElementById("modeFusedBtn");
-    const modeUnfusedBtn = document.getElementById("modeUnfusedBtn");
-    const currentModeLabel = document.getElementById("currentModeLabel");
-
-    const gridMatrix = document.getElementById("gridMatrix");
-    const inspectorSvgContainer = document.getElementById("inspectorSvgContainer");
-    const inspectorCellTitle = document.getElementById("inspectorCellTitle");
-
-    const statVoxelCount = document.getElementById("statVoxelCount");
-    const statClusterCount = document.getElementById("statClusterCount");
-    const statFaceCount = document.getElementById("statFaceCount");
-    const statLoopCount = document.getElementById("statLoopCount");
-
-    // =========================================================================
-    // 4. VOXEL GRID PROCEDURAL GENERATION & SYMMETRY
-    // =========================================================================
-
-    /**
-     * Generates a 3D grid of voxels deterministically using the given RNG.
-     */
-    function generateVoxelGrid(N, density, symmetry, rng) {
-      const grid = Array.from({ length: N }, () =>
-        Array.from({ length: N }, () =>
-          Array.from({ length: N }, () => null)
-        )
-      );
-
-      // Create connected structure starting from base/center
-      const activeVoxels = [];
-      const targetCount = Math.max(3, Math.floor(N * N * N * density));
-
-      // Start seeds at bottom center
-      const center = Math.floor(N / 2);
-      const queue = [[center, center, 0]];
-      const visited = new Set();
-      visited.add(`${center},${center},0`);
-
-      while (queue.length > 0 && activeVoxels.length < targetCount) {
-        // Pick from queue with slight randomness
-        const idx = Math.floor(rng() * queue.length);
-        const [x, y, z] = queue.splice(idx, 1)[0];
-
-        // Decide whether to activate voxel
-        if (rng() < 0.85 || activeVoxels.length < 3) {
-          activeVoxels.push([x, y, z]);
-
-          // Explore neighbors (6-connected)
-          const dirs = [
-            [1,0,0], [-1,0,0],
-            [0,1,0], [0,-1,0],
-            [0,0,1], [0,0,-1]
-          ];
-
-          // Shuffle dirs
-          for (let i = dirs.length - 1; i > 0; i--) {
-            const j = Math.floor(rng() * (i + 1));
-            [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
-          }
-
-          for (const [dx, dy, dz] of dirs) {
-            const nx = x + dx, ny = y + dy, nz = z + dz;
-            if (nx >= 0 && nx < N && ny >= 0 && ny < N && nz >= 0 && nz < N) {
-              const key = `${nx},${ny},${nz}`;
-              if (!visited.has(key)) {
-                visited.add(key);
-                queue.push([nx, ny, nz]);
-              }
-            }
-          }
-        }
-      }
-
-      // Populate grid with base boolean presence
-      const rawGrid = Array.from({ length: N }, () =>
-        Array.from({ length: N }, () =>
-          Array.from({ length: N }, () => false)
-        )
-      );
-
-      for (const [x, y, z] of activeVoxels) {
-        rawGrid[x][y][z] = true;
-      }
-
-      // Apply Symmetry to rawGrid
-      const finalGrid = Array.from({ length: N }, () =>
-        Array.from({ length: N }, () =>
-          Array.from({ length: N }, () => false)
-        )
-      );
-
-      for (let x = 0; x < N; x++) {
-        for (let y = 0; y < N; y++) {
-          for (let z = 0; z < N; z++) {
-            if (rawGrid[x][y][z]) {
-              finalGrid[x][y][z] = true;
-
-              if (symmetry === "mirror-x") {
-                finalGrid[N - 1 - x][y][z] = true;
-              } else if (symmetry === "mirror-xy") {
-                finalGrid[N - 1 - x][y][z] = true;
-                finalGrid[x][N - 1 - y][z] = true;
-                finalGrid[N - 1 - x][N - 1 - y][z] = true;
-              } else if (symmetry === "rotational") {
-                finalGrid[x][y][z] = true;
-                finalGrid[N - 1 - y][x][z] = true;
-                finalGrid[N - 1 - x][N - 1 - y][z] = true;
-                finalGrid[y][N - 1 - x][z] = true;
-              }
-            }
-          }
-        }
-      }
-
-      return finalGrid;
+      ctx.restore();
     }
 
-    /**
-     * Assigns color IDs (0..palette.length-1) to each active voxel based on strategy.
-     */
-    function assignVoxelColors(grid, N, strategy, paletteSize, rng) {
-      const colorGrid = Array.from({ length: N }, () =>
-        Array.from({ length: N }, () =>
-          Array.from({ length: N }, () => -1)
-        )
-      );
+    // Draw Cell Membrane (Cell Wall)
+    function drawCellMembrane(time) {
+      const points = getMembranePath(time);
+      if (points.length === 0) return;
 
-      const center = (N - 1) / 2;
-
-      for (let x = 0; x < N; x++) {
-        for (let y = 0; y < N; y++) {
-          for (let z = 0; z < N; z++) {
-            if (!grid[x][y][z]) continue;
-
-            let colorIdx = 0;
-
-            if (strategy === "height") {
-              // Z-based height bands
-              const normalizedZ = z / Math.max(1, N - 1);
-              colorIdx = Math.min(paletteSize - 1, Math.floor(normalizedZ * paletteSize));
-            } else if (strategy === "radial") {
-              // Radial distance from 3D center
-              const dx = x - center;
-              const dy = y - center;
-              const dz = z - center;
-              const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-              const maxDist = Math.sqrt(3 * center * center) || 1;
-              colorIdx = Math.min(paletteSize - 1, Math.floor((dist / maxDist) * paletteSize));
-            } else if (strategy === "clusters") {
-              // Hash / cluster based
-              const hash = (x * 7 + y * 13 + z * 19) % paletteSize;
-              colorIdx = hash;
-            }
-
-            colorGrid[x][y][z] = colorIdx;
-          }
-        }
+      // Membrane lipid bilayer outer fill
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
       }
+      ctx.lineTo(state.canvasSize.width, state.canvasSize.height);
+      ctx.lineTo(state.canvasSize.width, 0);
+      ctx.closePath();
 
-      return colorGrid;
-    }
-
-    // =========================================================================
-    // 5. CONNECTED COMPONENT LABELING (3D CCL)
-    // =========================================================================
-
-    /**
-     * Labels each 3D voxel with a unique cluster ID for connected component fusion.
-     */
-    function labelConnectedComponents(grid, colorGrid, N) {
-      const clusterGrid = Array.from({ length: N }, () =>
-        Array.from({ length: N }, () =>
-          Array.from({ length: N }, () => -1)
-        )
-      );
-
-      let currentClusterId = 0;
-      const clustersInfo = []; // { id, colorIdx }
-
-      for (let x = 0; x < N; x++) {
-        for (let y = 0; y < N; y++) {
-          for (let z = 0; z < N; z++) {
-            if (grid[x][y][z] && clusterGrid[x][y][z] === -1) {
-              const colorIdx = colorGrid[x][y][z];
-              const clusterId = currentClusterId++;
-              clustersInfo.push({ id: clusterId, colorIdx });
-
-              // BFS to flood fill connected component with same colorIdx
-              const queue = [[x, y, z]];
-              clusterGrid[x][y][z] = clusterId;
-
-              while (queue.length > 0) {
-                const [cx, cy, cz] = queue.shift();
-
-                const neighbors = [
-                  [cx + 1, cy, cz], [cx - 1, cy, cz],
-                  [cx, cy + 1, cz], [cx, cy - 1, cz],
-                  [cx, cy, cz + 1], [cx, cy, cz - 1]
-                ];
-
-                for (const [nx, ny, nz] of neighbors) {
-                  if (nx >= 0 && nx < N && ny >= 0 && ny < N && nz >= 0 && nz < N) {
-                    if (grid[nx][ny][nz] && colorGrid[nx][ny][nz] === colorIdx && clusterGrid[nx][ny][nz] === -1) {
-                      clusterGrid[nx][ny][nz] = clusterId;
-                      queue.push([nx, ny, nz]);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      return { clusterGrid, clustersInfo };
-    }
-
-    // =========================================================================
-    // 6. ISOMETRIC PROJECTION & BOUNDARY CONTOUR EXTRACTION
-    // =========================================================================
-
-    /**
-     * 3D Grid Coordinate to 2D Isometric Projection
-     */
-    function project3D(x, y, z, tileSize) {
-      const cos30 = 0.8660254037844386; // Math.cos(Math.PI / 6)
-      const sin30 = 0.5;                // Math.sin(Math.PI / 6)
-
-      const px = (x - y) * tileSize * cos30;
-      const py = (x + y) * tileSize * sin30 - z * tileSize;
-
-      return [px, py];
-    }
-
-    /**
-     * Round coordinate to avoid floating point precision issues in edge matching
-     */
-    function formatPt(pt) {
-      return `${pt[0].toFixed(3)},${pt[1].toFixed(3)}`;
-    }
-
-    /**
-     * Main Renderer Function: Renders SVG string for given parameters.
-     */
-    function renderIsometricSVG(grid, colorGrid, clusterGrid, clustersInfo, N, options) {
-      const { isFused, fusionType, palette, showStroke, strokeWidth, strokeColor } = options;
-      const tileSize = 24; // Base tile scale
-      const actualStrokeColor = (strokeColor === "auto") ? "rgba(15, 23, 42, 0.75)" : strokeColor;
-
-      // Collect all visible faces across voxels
-      const visibleFaces = [];
-
-      for (let x = 0; x < N; x++) {
-        for (let y = 0; y < N; y++) {
-          for (let z = 0; z < N; z++) {
-            if (!grid[x][y][z]) continue;
-
-            const colorIdx = colorGrid[x][y][z];
-            const clusterId = clusterGrid[x][y][z];
-
-            // Check Top Face (+Z)
-            if (z === N - 1 || !grid[x][y][z + 1]) {
-              visibleFaces.push({
-                type: "TOP",
-                planeDepth: z + 1,
-                x, y, z, colorIdx, clusterId,
-                // Top vertices clockwise
-                v3D: [
-                  [x, y, z + 1],
-                  [x + 1, y, z + 1],
-                  [x + 1, y + 1, z + 1],
-                  [x, y + 1, z + 1]
-                ]
-              });
-            }
-
-            // Check Left Face (+Y plane facing front-left)
-            if (y === N - 1 || !grid[x][y + 1][z]) {
-              visibleFaces.push({
-                type: "LEFT",
-                planeDepth: y + 1,
-                x, y, z, colorIdx, clusterId,
-                // Left vertices clockwise
-                v3D: [
-                  [x, y + 1, z + 1],
-                  [x + 1, y + 1, z + 1],
-                  [x + 1, y + 1, z],
-                  [x, y + 1, z]
-                ]
-              });
-            }
-
-            // Check Right Face (+X plane facing front-right)
-            if (x === N - 1 || !grid[x + 1][y][z]) {
-              visibleFaces.push({
-                type: "RIGHT",
-                planeDepth: x + 1,
-                x, y, z, colorIdx, clusterId,
-                // Right vertices clockwise
-                v3D: [
-                  [x + 1, y, z + 1],
-                  [x + 1, y, z],
-                  [x + 1, y + 1, z],
-                  [x + 1, y + 1, z + 1]
-                ]
-              });
-            }
-          }
-        }
-      }
-
-      // Sort visible faces in Painter's Algorithm Order (back to front)
-      // Sorting key: depth = x + y + z, then z, then x, then y
-      visibleFaces.sort((a, b) => {
-        const depthA = a.x + a.y + a.z;
-        const depthB = b.x + b.y + b.z;
-        if (depthA !== depthB) return depthA - depthB;
-        if (a.z !== b.z) return a.z - b.z;
-        if (a.x !== b.x) return a.x - b.x;
-        return a.y - b.y;
-      });
-
-      // Calculate Projected 2D Points for all faces
-      for (const face of visibleFaces) {
-        face.v2D = face.v3D.map(p => project3D(p[0], p[1], p[2], tileSize));
-      }
-
-      // Calculate Bounding Box of Entire Object for SVG ViewBox
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const face of visibleFaces) {
-        for (const pt of face.v2D) {
-          if (pt[0] < minX) minX = pt[0];
-          if (pt[0] > maxX) maxX = pt[0];
-          if (pt[1] < minY) minY = pt[1];
-          if (pt[1] > maxY) maxY = pt[1];
-        }
-      }
-
-      // Add padding
-      const padding = 20;
-      minX -= padding; minY -= padding;
-      maxX += padding; maxY += padding;
-      const viewBoxWidth = Math.max(100, maxX - minX);
-      const viewBoxHeight = Math.max(100, maxY - minY);
-
-      // Compute Cluster 2D Bounding Boxes for Unified Gradient Mapping
-      const clusterBounds = {};
-      for (const cluster of clustersInfo) {
-        clusterBounds[cluster.id] = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-      }
-      for (const face of visibleFaces) {
-        const bounds = clusterBounds[face.clusterId];
-        if (bounds) {
-          for (const pt of face.v2D) {
-            if (pt[0] < bounds.minX) bounds.minX = pt[0];
-            if (pt[0] > bounds.maxX) bounds.maxX = pt[0];
-            if (pt[1] < bounds.minY) bounds.minY = pt[1];
-            if (pt[1] > bounds.maxY) bounds.maxY = pt[1];
-          }
-        }
-      }
-
-      // Generate SVG Defs (Linear Gradients per Color Cluster)
-      let svgDefs = "<defs>";
-      for (const cluster of clustersInfo) {
-        const palColor = palette.colors[cluster.colorIdx % palette.colors.length];
-        const bounds = clusterBounds[cluster.id] || { minX: 0, minY: 0, maxX: 100, maxY: 100 };
-
-        svgDefs += `
-          <linearGradient id="grad-${cluster.id}" x1="${bounds.minX}" y1="${bounds.minY}" x2="${bounds.maxX}" y2="${bounds.maxY}" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="${palColor.stop1}" />
-            <stop offset="100%" stop-color="${palColor.stop2}" />
-          </linearGradient>
-        `;
-      }
-      svgDefs += "</defs>";
-
-      let svgContent = "";
-      let totalLoopsCount = 0;
-
-      if (!isFused) {
-        // UNFUSED / GRID MODE: Render every individual polygon rhombus with strokes
-        for (const face of visibleFaces) {
-          const pathD = `M ${face.v2D.map(pt => `${pt[0].toFixed(2)},${pt[1].toFixed(2)}`).join(" L ")} Z`;
-              const strokeAttr = showStroke ? `stroke="${actualStrokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"` : "";
-
-          let overlayColor = "";
-          if (face.type === "LEFT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.15" />`;
-          else if (face.type === "RIGHT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.32" />`;
-
-          svgContent += `<path d="${pathD}" fill="url(#grad-${face.clusterId})" ${strokeAttr} />${overlayColor}`;
-        }
-        totalLoopsCount = visibleFaces.length;
+      const grad = ctx.createLinearGradient(state.canvasSize.width * 0.8, 0, state.canvasSize.width, 0);
+      if (state.isDarkMode) {
+        grad.addColorStop(0, 'rgba(0, 240, 255, 0.03)');
+        grad.addColorStop(1, 'rgba(16, 185, 129, 0.08)');
       } else {
-        // FUSED MODE: Color-Based Region Fusion (Boolean Union Contour Extraction)
-        // Group faces by clusterId + faceType + (optional 3D Coplanar Plane Depth)
-        const faceGroups = {};
-        for (const face of visibleFaces) {
-          const groupKey = (fusionType === "coplanar")
-            ? `${face.clusterId}_${face.type}_p${face.planeDepth}`
-            : `${face.clusterId}_${face.type}`;
-          if (!faceGroups[groupKey]) faceGroups[groupKey] = [];
-          faceGroups[groupKey].push(face);
-        }
+        grad.addColorStop(0, 'rgba(2, 132, 199, 0.05)');
+        grad.addColorStop(1, 'rgba(5, 150, 105, 0.12)');
+      }
+      ctx.fillStyle = grad;
+      ctx.fill();
 
-        // Render each face group
-        for (const [groupKey, faces] of Object.entries(faceGroups)) {
-          const parts = groupKey.split("_");
-          const clusterId = parseInt(parts[0], 10);
-          const faceType = parts[1];
+      // Outer membrane double layer line
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      ctx.strokeStyle = state.isDarkMode ? 'rgba(0, 240, 255, 0.4)' : 'rgba(2, 132, 199, 0.6)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
-          // Collect directed edges for Boolean Union Edge Cancellation
-          const edgeMap = new Map(); // key: "p1Key->p2Key" => { p1, p2 }
+      // Inner lipid line
+      ctx.beginPath();
+      ctx.moveTo(points[0].x + 8, points[0].y);
+      for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2 + 8;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x + 8, points[i].y, xc, yc);
+      }
+      ctx.strokeStyle = state.isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(5, 150, 105, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
 
-          for (const face of faces) {
-            const v = face.v2D;
-            const edges = [
-              [v[0], v[1]],
-              [v[1], v[2]],
-              [v[2], v[3]],
-              [v[3], v[0]]
-            ];
+      ctx.restore();
+    }
 
-            for (const [p1, p2] of edges) {
-              const k1 = formatPt(p1);
-              const k2 = formatPt(p2);
+    // Draw Central Glio Core (Nucleus Hub)
+    function drawGlioCore(time) {
+      const core = getCorePosition();
+      ctx.save();
 
-              const forwardKey = `${k1}->${k2}`;
-              const reverseKey = `${k2}->${k1}`;
+      // Outer nuclear envelope glow
+      const glowGrad = ctx.createRadialGradient(core.x, core.y, core.radius * 0.5, core.x, core.y, core.radius * 1.8);
+      glowGrad.addColorStop(0, 'rgba(0, 240, 255, 0.25)');
+      glowGrad.addColorStop(0.6, 'rgba(168, 85, 247, 0.1)');
+      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius * 1.8, 0, Math.PI * 2);
+      ctx.fill();
 
-              if (edgeMap.has(reverseKey)) {
-                // Internal shared edge! Cancel out
-                edgeMap.delete(reverseKey);
-              } else {
-                edgeMap.set(forwardKey, { p1, p2, k1, k2 });
-              }
-            }
-          }
+      // Outer Nuclear Envelope with pores
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([12, 6]);
+      ctx.lineDashOffset = -time * 10;
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-          // Build Boundary Contour Loops from remaining directed edges
-          const loops = [];
-          const remainingEdges = new Map(edgeMap);
+      // Inner Chromatin / Hub Core
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius * 0.68, 0, Math.PI * 2);
+      const innerGrad = ctx.createRadialGradient(core.x, core.y, 0, core.x, core.y, core.radius * 0.68);
+      innerGrad.addColorStop(0, '#121d33');
+      innerGrad.addColorStop(0.8, '#0b1326');
+      innerGrad.addColorStop(1, 'rgba(0, 240, 255, 0.2)');
+      ctx.fillStyle = innerGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
 
-          while (remainingEdges.size > 0) {
-            const [startKey, startEdge] = remainingEdges.entries().next().value;
-            remainingEdges.delete(startKey);
+      // Central Nucleolus Node
+      const pulse = Math.sin(time * 2) * 3;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.radius * 0.25 + pulse, 0, Math.PI * 2);
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 20;
+      ctx.fill();
 
-            const loop = [startEdge.p1, startEdge.p2];
-            let currentK = startEdge.k2;
+      // Core Label Typography
+      ctx.shadowBlur = 0;
+      ctx.font = '700 11px "SF Mono", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('GLIO_NUCLEUS', core.x, core.y + core.radius + 20);
 
-            let foundNext = true;
-            while (foundNext && currentK !== startEdge.k1 && remainingEdges.size > 0) {
-              foundNext = false;
-              for (const [eKey, edge] of remainingEdges.entries()) {
-                if (edge.k1 === currentK) {
-                  loop.push(edge.p2);
-                  currentK = edge.k2;
-                  remainingEdges.delete(eKey);
-                  foundNext = true;
-                  break;
-                }
-              }
-            }
+      ctx.font = '10px "SF Mono", monospace';
+      ctx.fillStyle = '#8a99ad';
+      ctx.fillText('HUB_CORE // ID: 0x00_MASTER', core.x, core.y + core.radius + 34);
 
-            loops.push(loop);
-          }
+      ctx.restore();
+    }
 
-          totalLoopsCount += loops.length;
+    // --- PROCEDURAL GLIOSOME (PROTEIN) ENGINE ---
 
-          // Convert loops to SVG Path String
-          let pathD = "";
-          for (const loop of loops) {
-            if (loop.length < 3) continue;
-            pathD += `M ${loop.map(pt => `${pt[0].toFixed(2)},${pt[1].toFixed(2)}`).join(" L ")} Z `;
-          }
+    // Initial Default Gliosome Data Definitions
+    const defaultGliosomes = [
+      {
+        id: 1,
+        name: "THUNDERBIRD_INGEST",
+        status: "healthy",
+        cron: "*/5 * * * *",
+        lastRun: "14s ago",
+        execTime: "38ms",
+        color: "#00f0ff",
+        xRel: 0.48,
+        yRel: 0.30,
+        script: `// Thunderbird Ingestion Pipeline
+async function handleIngest(event) {
+  const payload = await event.readStream();
+  const parsed = parseTelemetry(payload);
+  if (parsed.hasError) {
+    return Glio.dispatch('ERR_INGEST', parsed);
+  }
+  return Glio.emit('METRICS_BATCH', parsed.data);
+}`
+      },
+      {
+        id: 2,
+        name: "PROMETHEUS_METRICS",
+        status: "healthy",
+        cron: "*/1 * * * *",
+        lastRun: "3s ago",
+        execTime: "12ms",
+        color: "#10b981",
+        xRel: 0.58,
+        yRel: 0.65,
+        script: `// Prometheus Metrics Exporter
+export function scrapeMetrics() {
+  const memory = Glio.getMemoryStats();
+  const activeEvents = Glio.getEventQueueLength();
+  return {
+    ts: Date.now(),
+    heap_used_mb: memory.heapUsed,
+    queue_depth: activeEvents
+  };
+}`
+      },
+      {
+        id: 3,
+        name: "HOME_ASSISTANT_STATE",
+        status: "healthy",
+        cron: "0 * * * *",
+        lastRun: "22m ago",
+        execTime: "105ms",
+        color: "#ffb703",
+        xRel: 0.72,
+        yRel: 0.28,
+        script: `// Home Assistant State Synchronizer
+function syncStates(states) {
+  for (const entity of states) {
+    if (entity.state === 'unavailable') {
+      Glio.notify('DEVICE_OFFLINE', entity.entity_id);
+    }
+  }
+}`
+      },
+      {
+        id: 4,
+        name: "WINDMILL_RUNNER",
+        status: "healthy",
+        cron: "*/15 * * * *",
+        lastRun: "8m ago",
+        execTime: "240ms",
+        color: "#a855f7",
+        xRel: 0.76,
+        yRel: 0.72,
+        script: `// Windmill Flow Execution Runner
+async function executeFlow(flowId, inputs) {
+  const job = await Windmill.trigger(flowId, inputs);
+  await job.wait();
+  return job.getResult();
+}`
+      },
+      {
+        id: 5,
+        name: "LOG_ROTATE_DAEMON",
+        status: "healthy",
+        cron: "0 0 * * *",
+        lastRun: "4h ago",
+        execTime: "512ms",
+        color: "#f43f5e",
+        xRel: 0.42,
+        yRel: 0.78,
+        script: `// Log Rotate & Clean Daemon
+function rotateLogs() {
+  const archives = Glio.fs.list('/var/log/glio');
+  archives.filter(f => f.ageDays > 7).forEach(f => f.delete());
+}`
+      }
+    ];
 
-          if (pathD.trim().length > 0) {
-                const strokeAttr = showStroke ? `stroke="${actualStrokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"` : "";
+    // --- KURZGESAGT MOLECULAR FOLDING ENGINE (SCRIPT -> AMINO ACIDS -> PUZZLE PROTEIN) ---
 
-            let overlayColor = "";
-            if (faceType === "LEFT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.15" />`;
-            else if (faceType === "RIGHT") overlayColor = `<path d="${pathD}" fill="black" fill-opacity="0.32" />`;
+    const AMINO_TYPES = [
+      { type: 'hydrophobic', color: '#0284c7', label: 'Val' }, // Blue
+      { type: 'charged_pos', color: '#7c3aed', label: 'Lys' }, // Purple
+      { type: 'polar', color: '#059669', label: 'Ser' },       // Emerald
+      { type: 'acidic', color: '#e11d48', label: 'Glu' },      // Red
+      { type: 'aromatic', color: '#d97706', label: 'Phe' }     // Amber
+    ];
 
-            svgContent += `<path d="${pathD}" fill="url(#grad-${clusterId})" ${strokeAttr} />${overlayColor}`;
-          }
-        }
+    // Simple String Hash Function
+    function hashString(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    // Convert Script Text into a Folded Amino Acid Chain & 3D Molecular Block Geometry
+    function foldScriptToProteinGeometry(scriptText, name) {
+      const seed = hashString(scriptText + name);
+      const lines = scriptText.split('\n').filter(l => l.trim().length > 0);
+      const chainLength = Math.min(18, Math.max(8, lines.length + Math.floor(scriptText.length / 25)));
+
+      // Generate sequence of amino acid blocks
+      const aminoSequence = [];
+      for (let i = 0; i < chainLength; i++) {
+        const charCode = scriptText.charCodeAt(i % scriptText.length) || 65;
+        const typeIdx = (charCode + i + seed) % AMINO_TYPES.length;
+        aminoSequence.push(AMINO_TYPES[typeIdx]);
       }
 
-      const svgHeader = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX.toFixed(2)} ${minY.toFixed(2)} ${viewBoxWidth.toFixed(2)} ${viewBoxHeight.toFixed(2)}" class="w-full h-full max-h-full drop-shadow-md transition-all duration-300">`;
-      const fullSvg = `${svgHeader}${svgDefs}${svgContent}</svg>`;
+      // Generate fixed 2D folded puzzle domain shapes (3-5 overlapping molecular blocks)
+      const numDomains = 3 + (seed % 3); // 3 to 5 puzzle blocks
+      const domains = [];
+      const baseAngleStep = (Math.PI * 2) / numDomains;
+
+      for (let i = 0; i < numDomains; i++) {
+        const angle = i * baseAngleStep + ((seed >> (i * 2)) % 7) * 0.1;
+        const dist = 14 + ((seed >> i) % 12);
+        const domainRadius = 18 + ((seed >> (i + 3)) % 10);
+        const amino = aminoSequence[i % aminoSequence.length];
+
+        domains.push({
+          relX: Math.cos(angle) * dist,
+          relY: Math.sin(angle) * dist,
+          radius: domainRadius,
+          color: amino.color,
+          type: amino.type,
+          notchType: (seed + i) % 3 // 0: rounded tab, 1: socket, 2: smooth
+        });
+      }
 
       return {
-        svgString: fullSvg,
-        stats: {
-          visibleFacesCount: visibleFaces.length,
-          loopsCount: totalLoopsCount,
-          clusterCount: clustersInfo.length
-        }
+        seed,
+        chainLength,
+        aminoSequence,
+        domains
       };
     }
 
-    // =========================================================================
-    // 7. UI RENDERER & EVENT HANDLERS
-    // =========================================================================
+    // Initialize Gliosomes in State with Folded Protein Geometry
+    function initGliosomes() {
+      const w = state.canvasSize.width;
+      const h = state.canvasSize.height;
 
-    function updatePaletteSwatches() {
-      const palette = PALETTES[state.paletteKey];
-      paletteSwatches.innerHTML = "";
-      palette.colors.forEach(c => {
-        const div = document.createElement("div");
-        div.className = "flex-1 h-full";
-        div.style.background = `linear-gradient(135deg, ${c.stop1}, ${c.stop2})`;
-        paletteSwatches.appendChild(div);
+      state.gliosomes = defaultGliosomes.map((g) => {
+        const scriptHash = '#' + hashString(g.script + g.name).toString(16).substring(0, 6);
+        const folding = foldScriptToProteinGeometry(g.script, g.name);
+        return {
+          ...g,
+          x: w * g.xRel,
+          y: h * g.yRel,
+          baseX: w * g.xRel,
+          baseY: h * g.yRel,
+          driftAngle: Math.random() * Math.PI * 2,
+          radius: 40,
+          hash: scriptHash,
+          folding: folding,
+          seedHash: folding.seed
+        };
+      });
+
+      // Populate Select Dropdown in UI Header
+      const select = document.getElementById('event-source-select');
+      if (select) {
+        select.innerHTML = state.gliosomes.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+      }
+    }
+
+    // Update Brownian Drift Motion
+    function updateGliosomePositions(dt) {
+      state.gliosomes.forEach((g) => {
+        if (state.draggedEntity && state.draggedEntity.id === g.id) return;
+
+        // Gentle fluid Brownian drift
+        g.driftAngle += (Math.random() - 0.5) * 0.4 * dt;
+        const driftSpeed = g.status === 'warning' ? 18 : 8;
+        g.x += Math.cos(g.driftAngle) * driftSpeed * dt;
+        g.y += Math.sin(g.driftAngle) * driftSpeed * dt;
+
+        // Anchor constraint to prevent floating off screen
+        const dx = g.baseX - g.x;
+        const dy = g.baseY - g.y;
+        g.x += dx * 0.2 * dt;
+        g.y += dy * 0.2 * dt;
       });
     }
 
-    function renderApp() {
-      const mainRng = createRNG(state.seed);
-      const palette = PALETTES[state.paletteKey];
+    // Draw Individual Gliosome as a Kurzgesagt-inspired 3D Molecular Machine (Fixed Folded Puzzle Geometry)
+    function drawGliosome(g, time) {
+      ctx.save();
 
-      gridMatrix.innerHTML = "";
+      const isHovered = state.hoveredEntity && state.hoveredEntity.id === g.id;
+      const isFocused = state.focusedEntity && state.focusedEntity.id === g.id;
 
-      let selectedCellData = null;
+      // Soft Outer Halo
+      const haloGrad = ctx.createRadialGradient(g.x, g.y, g.radius * 0.3, g.x, g.y, g.radius * 1.8);
+      haloGrad.addColorStop(0, g.color + '33');
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.radius * 1.8, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Render 16 Cell Matrix
-      for (let i = 0; i < 16; i++) {
-        // Derive unique seed per cell from main seed
-        const cellSeed = `${state.seed}-var-${i}`;
-        const cellRng = createRNG(cellSeed);
+      // Render Folded Molecular Subdomains (Puzzle Piece Blocks)
+      if (g.folding && g.folding.domains) {
+        g.folding.domains.forEach((dom) => {
+          const dx = g.x + dom.relX;
+          const dy = g.y + dom.relY;
 
-        const grid = generateVoxelGrid(state.gridSize, state.density, state.symmetry, cellRng);
-        const colorGrid = assignVoxelColors(grid, state.gridSize, state.colorStrategy, palette.colors.length, cellRng);
-        const { clusterGrid, clustersInfo } = labelConnectedComponents(grid, colorGrid, state.gridSize);
+          // Domain Block Body
+          ctx.beginPath();
+          ctx.arc(dx, dy, dom.radius, 0, Math.PI * 2);
+          ctx.fillStyle = dom.color;
+          ctx.fill();
 
-        // Count active voxels
-        let voxelCount = 0;
-        for (let x = 0; x < state.gridSize; x++) {
-          for (let y = 0; y < state.gridSize; y++) {
-            for (let z = 0; z < state.gridSize; z++) {
-              if (grid[x][y][z]) voxelCount++;
-            }
+          ctx.strokeStyle = state.isDarkMode ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // Puzzle Notch / Binding Pocket Detail
+          if (dom.notchType === 0) { // Outward rounded Lego/puzzle tab
+            ctx.beginPath();
+            ctx.arc(dx + dom.radius * 0.7, dy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = dom.color;
+            ctx.fill();
+            ctx.stroke();
+          } else if (dom.notchType === 1) { // Inward socket notch
+            ctx.beginPath();
+            ctx.arc(dx - dom.radius * 0.6, dy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = state.isDarkMode ? '#12151e' : '#f1f5f9';
+            ctx.fill();
+            ctx.stroke();
           }
-        }
-
-        const renderResult = renderIsometricSVG(grid, colorGrid, clusterGrid, clustersInfo, state.gridSize, {
-          isFused: state.isFused,
-          fusionType: state.fusionType,
-          palette,
-          showStroke: state.showStroke,
-          strokeWidth: state.strokeWidth,
-          strokeColor: state.strokeColor
         });
-
-        const isSelected = (i === state.selectedCellIndex);
-        if (isSelected) {
-          selectedCellData = {
-            renderResult,
-            voxelCount,
-            clusterCount: clustersInfo.length,
-            cellIndex: i
-          };
-        }
-
-        // Cell Container
-        const cellCard = document.createElement("div");
-        cellCard.className = `bg-white border rounded-xl p-3 flex flex-col items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-400 group relative ${isSelected ? 'grid-cell-active shadow-sm' : 'border-slate-200'}`;
-        cellCard.onclick = () => {
-          state.selectedCellIndex = i;
-          renderApp();
-        };
-
-        const previewContainer = document.createElement("div");
-        previewContainer.className = "w-full h-32 flex items-center justify-center p-1";
-        previewContainer.innerHTML = renderResult.svgString;
-
-        const cellFooter = document.createElement("div");
-        cellFooter.className = "w-full flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400 font-mono";
-        cellFooter.innerHTML = `<span>#${i + 1}</span><span>${voxelCount} voxels</span>`;
-
-        cellCard.appendChild(previewContainer);
-        cellCard.appendChild(cellFooter);
-        gridMatrix.appendChild(cellCard);
       }
 
-      // Update Inspector Panel with Selected Cell
-      if (selectedCellData) {
-        inspectorSvgContainer.innerHTML = selectedCellData.renderResult.svgString;
-        inspectorCellTitle.textContent = `Variation Cell #${selectedCellData.cellIndex + 1}`;
-
-        statVoxelCount.textContent = selectedCellData.voxelCount;
-        statClusterCount.textContent = selectedCellData.clusterCount;
-        statFaceCount.textContent = selectedCellData.renderResult.stats.visibleFacesCount;
-        statLoopCount.textContent = selectedCellData.renderResult.stats.loopsCount;
+      // Highlight Ring when Hovered or Focused
+      if (isHovered || isFocused) {
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, g.radius + 8, 0, Math.PI * 2);
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-cyan').trim() || '#0284c7';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
+
+      // Sleek Monospaced Label
+      ctx.font = '600 10px "SF Mono", monospace';
+      ctx.fillStyle = state.isDarkMode ? '#ffffff' : '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(g.name, g.x, g.y + g.radius + 14);
+
+      ctx.font = '9px "SF Mono", monospace';
+      ctx.fillStyle = state.isDarkMode ? 'rgba(255,255,255,0.5)' : '#64748b';
+      ctx.fillText(g.hash + ' (' + (g.folding ? g.folding.chainLength : 0) + ' aa)', g.x, g.y + g.radius + 27);
+
+      ctx.restore();
     }
 
-    // Attach Controls Event Listeners
-    seedInput.addEventListener("input", (e) => {
-      state.seed = e.target.value.trim() || "seed-123";
-      renderApp();
+    // --- VESICLE TRANSPORT & EVENT TERMINAL SIMULATION ---
+
+    function createVesicle(sourceGliosome) {
+      const core = getCorePosition();
+      const vesicle = {
+        id: Math.random().toString(36).substring(2, 9),
+        source: sourceGliosome,
+        startX: sourceGliosome.x,
+        startY: sourceGliosome.y,
+        targetX: core.x,
+        targetY: core.y,
+        progress: 0,
+        speed: 0.6, // Duration ~1.6 seconds
+        color: sourceGliosome.color,
+        payload: {
+          event_id: 'evt_' + Math.random().toString(36).substring(2, 10),
+          timestamp: new Date().toISOString(),
+          source_module: sourceGliosome.name,
+          source_hash: sourceGliosome.hash,
+          target_node: 'GLIO_NUCLEUS_CORE',
+          execution_time_ms: Math.floor(Math.random() * 40) + 10,
+          status: 'SUCCESS_DELIVERED',
+          data: {
+            batch_size: Math.floor(Math.random() * 100) + 1,
+            memory_delta_kb: +(Math.random() * 12.4).toFixed(2),
+            checksum: '0x' + Math.random().toString(16).substring(2, 10).toUpperCase()
+          }
+        }
+      };
+      state.vesicles.push(vesicle);
+      document.getElementById('stat-vesicles').innerText = state.vesicles.length;
+    }
+
+    function updateAndDrawVesicles(dt, time) {
+      ctx.save();
+      for (let i = state.vesicles.length - 1; i >= 0; i--) {
+        const v = state.vesicles[i];
+        v.progress += v.speed * dt;
+
+        if (v.progress >= 1) {
+          // Vesicle arrived at destination
+          const arrivedVesicle = state.vesicles.splice(i, 1)[0];
+          document.getElementById('stat-vesicles').innerText = state.vesicles.length;
+          showTerminalEventOutput(arrivedVesicle);
+          continue;
+        }
+
+        // Quadratic curved path along microtubule
+        const cpX = (v.startX + v.targetX) / 2 + Math.sin(time * 2 + v.source.id) * 20;
+        const cpY = (v.startY + v.targetY) / 2 + Math.cos(time * 2 + v.source.id) * 20;
+
+        const t = v.progress;
+        const currentX = (1 - t) * (1 - t) * v.startX + 2 * (1 - t) * t * cpX + t * t * v.targetX;
+        const currentY = (1 - t) * (1 - t) * v.startY + 2 * (1 - t) * t * cpY + t * t * v.targetY;
+
+        // Draw Glowing Vesicle Packet
+        ctx.beginPath();
+        ctx.arc(currentX, currentY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = v.color;
+        ctx.shadowColor = v.color;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+
+        // DNA/Data strand trail
+        ctx.beginPath();
+        ctx.arc(currentX - (v.targetX - v.startX) * 0.02, currentY - (v.targetY - v.startY) * 0.02, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function showTerminalEventOutput(vesicle) {
+      state.isFocused = true;
+      state.focusedEntity = vesicle.source;
+      document.body.classList.add('microscope-focused');
+
+      const jsonString = JSON.stringify(vesicle.payload, null, 2);
+
+      popoverContent.innerHTML = `
+        <div class="popover-header">
+          <div class="popover-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+            VESICLE EVENT TERMINAL OUTPUT
+          </div>
+          <span style="font-size: 11px; color: var(--accent-emerald); font-weight: 600;">STATUS: 200 OK</span>
+        </div>
+        <div class="popover-body">
+          <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>SOURCE: <strong style="color: var(--accent-cyan);">${vesicle.source.name}</strong></span>
+            <span>EVENT_ID: <strong>${vesicle.payload.event_id}</strong></span>
+          </div>
+
+          <div class="terminal-container" id="terminal-json-output">${escapeHtml(jsonString)}</div>
+        </div>
+        <div class="popover-footer">
+          <button class="btn" id="pop-btn-copy">COPY JSON</button>
+          <button class="btn btn-primary" id="pop-btn-retrigger">SIMULATE AGAIN</button>
+          <button class="btn btn-primary" id="pop-btn-close-term">CLOSE TERMINAL</button>
+        </div>
+      `;
+
+      popoverLayer.classList.add('active');
+
+      document.getElementById('pop-btn-close-term').onclick = closeFocusPopover;
+      document.getElementById('pop-btn-retrigger').onclick = () => {
+        closeFocusPopover();
+        setTimeout(() => createVesicle(vesicle.source), 200);
+      };
+      document.getElementById('pop-btn-copy').onclick = () => {
+        navigator.clipboard.writeText(jsonString);
+        document.getElementById('pop-btn-copy').innerText = 'COPIED!';
+        setTimeout(() => {
+          const btn = document.getElementById('pop-btn-copy');
+          if (btn) btn.innerText = 'COPY JSON';
+        }, 1500);
+      };
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Attach Event Simulation Listener to UI Button
+    document.getElementById('btn-simulate-event').addEventListener('click', () => {
+      const select = document.getElementById('event-source-select');
+      const selectedId = parseInt(select.value, 10);
+      const selectedGliosome = state.gliosomes.find(g => g.id === selectedId) || state.gliosomes[0];
+
+      if (selectedGliosome) {
+        selectedGliosome.lastRun = 'Just now';
+        createVesicle(selectedGliosome);
+      }
     });
 
-    regenSeedBtn.addEventListener("click", () => {
-      state.seed = "iso-" + Math.random().toString(36).substring(2, 9);
-      seedInput.value = state.seed;
-      renderApp();
+    // --- INTERACTIVE MICROSCOPIC FOCUS & POPOVER SYSTEM ---
+
+    const hoverHud = document.getElementById('hover-hud');
+    const popoverLayer = document.getElementById('popover-layer');
+    const popoverContent = document.getElementById('popover-content');
+
+    // Update Hover HUD Card Position & Content
+    function updateHoverHud(e) {
+      if (!state.hoveredEntity || state.isFocused || state.draggedEntity) {
+        hoverHud.classList.remove('visible');
+        return;
+      }
+
+      const entity = state.hoveredEntity;
+      document.getElementById('hud-name').innerText = entity.name;
+
+      const badge = document.getElementById('hud-status-badge');
+      badge.innerText = entity.status.toUpperCase();
+      badge.style.color = entity.status === 'healthy' ? 'var(--accent-emerald)' : 'var(--accent-amber)';
+
+      document.getElementById('hud-cron').innerText = entity.cron;
+      document.getElementById('hud-last-run').innerText = entity.lastRun;
+      document.getElementById('hud-exec-time').innerText = entity.execTime;
+      document.getElementById('hud-hash').innerText = entity.hash;
+
+      hoverHud.style.left = (e.clientX + 16) + 'px';
+      hoverHud.style.top = (e.clientY + 16) + 'px';
+      hoverHud.classList.add('visible');
+    }
+
+    // Open Microscope Focus Popover
+    function openFocusPopover(entity, type = 'gliosome') {
+      state.isFocused = true;
+      state.focusedEntity = entity;
+      document.body.classList.add('microscope-focused');
+      hoverHud.classList.remove('visible');
+
+      if (type === 'gliosome') {
+        popoverContent.innerHTML = `
+          <div class="popover-header">
+            <div class="popover-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+              GLIOSOME FOCUS: ${entity.name}
+            </div>
+            <span style="font-size: 11px; color: var(--accent-cyan); font-weight: 600;">${entity.hash}</span>
+          </div>
+          <div class="popover-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label class="form-label">CRON INTERVAL SCHEDULE</label>
+                <input type="text" id="pop-cron-input" class="form-input" value="${entity.cron}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">HEALTH STATE</label>
+                <select id="pop-status-input" class="form-input">
+                  <option value="healthy" ${entity.status === 'healthy' ? 'selected' : ''}>HEALTHY (NORMAL DRIFT)</option>
+                  <option value="warning" ${entity.status === 'warning' ? 'selected' : ''}>WARNING (ELEVATED MOTION)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="code-editor-wrapper">
+              <div class="code-editor-header">
+                <span>SCRIPT CODE (RECALCULATES PROTEIN GEOMETRY IN REAL-TIME)</span>
+                <span>LANGUAGE: JAVASCRIPT</span>
+              </div>
+              <textarea id="pop-code-input" class="code-editor" spellcheck="false">${entity.script}</textarea>
+            </div>
+          </div>
+          <div class="popover-footer">
+            <button class="btn" id="pop-btn-cancel">CLOSE FOCUS</button>
+            <button class="btn btn-primary" id="pop-btn-save">APPLY & RE-SYNTHESIZE</button>
+          </div>
+        `;
+
+        // Code input listener for live protein re-synthesis and folding
+        const codeInput = document.getElementById('pop-code-input');
+        codeInput.addEventListener('input', () => {
+          entity.script = codeInput.value;
+          entity.hash = '#' + hashString(entity.script + entity.name).toString(16).substring(0, 6);
+          entity.folding = foldScriptToProteinGeometry(entity.script, entity.name);
+          entity.seedHash = entity.folding.seed;
+        });
+
+        document.getElementById('pop-btn-save').onclick = () => {
+          entity.cron = document.getElementById('pop-cron-input').value;
+          entity.status = document.getElementById('pop-status-input').value;
+          entity.lastRun = 'Just now';
+          closeFocusPopover();
+        };
+
+        document.getElementById('pop-btn-cancel').onclick = closeFocusPopover;
+      } else if (type === 'core') {
+        popoverContent.innerHTML = `
+          <div class="popover-header">
+            <div class="popover-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              GLIO CENTRAL NUCLEUS HUB
+            </div>
+            <span style="font-size: 11px; color: var(--accent-emerald); font-weight: 600;">SYS_STATUS: OPTIMAL</span>
+          </div>
+          <div class="popover-body">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+              <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 20px; font-weight: bold; color: var(--accent-cyan);">${state.gliosomes.length}</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">ACTIVE GLIOSOMES</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 20px; font-weight: bold; color: var(--accent-emerald);">99.98%</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">HUB UPTIME</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 20px; font-weight: bold; color: var(--accent-violet);">1.2k req/s</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">VESICLE THROUGHPUT</div>
+              </div>
+            </div>
+
+            <div class="terminal-container">
+[GLIO_NUCLEUS_LOG] Core event loop running on master node 0x00
+[GLIO_NUCLEUS_LOG] Microtubule network initialized with 5 channels
+[GLIO_NUCLEUS_LOG] All workers healthy. Synchronized cron schedules.
+            </div>
+          </div>
+          <div class="popover-footer">
+            <button class="btn btn-primary" id="pop-btn-close">CLOSE CORE</button>
+          </div>
+        `;
+        document.getElementById('pop-btn-close').onclick = closeFocusPopover;
+      } else if (type === 'membrane') {
+        popoverContent.innerHTML = `
+          <div class="popover-header">
+            <div class="popover-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              CELL MEMBRANE BOUNDARY GATEWAY
+            </div>
+            <span style="font-size: 11px; color: var(--accent-emerald); font-weight: 600;">INGRESS/EGRESS: SECURE</span>
+          </div>
+          <div class="popover-body">
+            <p style="color: var(--text-muted); font-size: 12px;">
+              The cell wall serves as Glio's perimeter interface, managing external HTTP Webhooks, MQTT feeds, and remote WebSocket streams.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span>HTTP Ingress Gateway (Port 443)</span>
+                <span style="color: var(--accent-emerald);">LISTENING</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span>MQTT Broker Transport</span>
+                <span style="color: var(--accent-emerald);">CONNECTED</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span>Cell Wall Firewall Filter</span>
+                <span style="color: var(--accent-cyan);">ACTIVE (0 BLOCKED)</span>
+              </div>
+            </div>
+          </div>
+          <div class="popover-footer">
+            <button class="btn btn-primary" id="pop-btn-close">CLOSE GATEWAY</button>
+          </div>
+        `;
+        document.getElementById('pop-btn-close').onclick = closeFocusPopover;
+      }
+
+      popoverLayer.classList.add('active');
+    }
+
+    // Close Focus Popover
+    function closeFocusPopover() {
+      state.isFocused = false;
+      state.focusedEntity = null;
+      document.body.classList.remove('microscope-focused');
+      popoverLayer.classList.remove('active');
+    }
+
+    // Mouse Interaction Handlers
+    canvas.addEventListener('mousemove', (e) => {
+      state.mouse.x = e.clientX;
+      state.mouse.y = e.clientY;
+
+      if (state.draggedEntity) {
+        state.draggedEntity.x = e.clientX - state.dragOffset.x;
+        state.draggedEntity.y = e.clientY - state.dragOffset.y;
+        state.draggedEntity.baseX = state.draggedEntity.x;
+        state.draggedEntity.baseY = state.draggedEntity.y;
+        return;
+      }
+
+      if (state.isFocused) return;
+
+      // Check Hover over Gliosomes
+      let foundHover = null;
+      state.gliosomes.forEach((g) => {
+        const dist = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+        if (dist <= g.radius + 10) {
+          foundHover = g;
+        }
+      });
+
+      state.hoveredEntity = foundHover;
+      canvas.style.cursor = foundHover ? 'pointer' : 'default';
+      updateHoverHud(e);
     });
 
-    randomizeAllBtn.addEventListener("click", () => {
-      state.seed = "iso-" + Math.random().toString(36).substring(2, 9);
-      seedInput.value = state.seed;
-      renderApp();
+    canvas.addEventListener('mousedown', (e) => {
+      if (state.isFocused) return;
+
+      // Check Click on Gliosomes
+      state.gliosomes.forEach((g) => {
+        const dist = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+        if (dist <= g.radius + 10) {
+          state.draggedEntity = g;
+          state.dragOffset.x = e.clientX - g.x;
+          state.dragOffset.y = e.clientY - g.y;
+        }
+      });
     });
 
-    gridSizeRange.addEventListener("input", (e) => {
-      state.gridSize = parseInt(e.target.value, 10);
-      gridSizeVal.textContent = `${state.gridSize} x ${state.gridSize} x ${state.gridSize}`;
-      renderApp();
+    canvas.addEventListener('mouseup', (e) => {
+      if (state.draggedEntity) {
+        state.draggedEntity.lastRun = 'Just now (Refresh)';
+        state.draggedEntity = null;
+      }
     });
 
-    densityRange.addEventListener("input", (e) => {
-      state.density = parseInt(e.target.value, 10) / 100;
-      densityVal.textContent = `${e.target.value}%`;
-      renderApp();
+    canvas.addEventListener('click', (e) => {
+      if (state.isFocused) return;
+
+      // Click Gliosome
+      let clickedEntity = null;
+      state.gliosomes.forEach((g) => {
+        const dist = Math.hypot(e.clientX - g.x, e.clientY - g.y);
+        if (dist <= g.radius + 10) clickedEntity = g;
+      });
+
+      if (clickedEntity) {
+        openFocusPopover(clickedEntity, 'gliosome');
+        return;
+      }
+
+      // Click Core Nucleus
+      const core = getCorePosition();
+      const distCore = Math.hypot(e.clientX - core.x, e.clientY - core.y);
+      if (distCore <= core.radius) {
+        openFocusPopover(core, 'core');
+        return;
+      }
+
+      // Click Membrane Cell Wall
+      if (e.clientX >= state.canvasSize.width * 0.84) {
+        openFocusPopover(null, 'membrane');
+      }
     });
 
-    symmetrySelect.addEventListener("change", (e) => {
-      state.symmetry = e.target.value;
-      renderApp();
-    });
+    // Draw Microtubule Filament Connectors
+    function drawMicrotubules(time) {
+      const core = getCorePosition();
+      const membranePoints = getMembranePath(time);
 
-    paletteSelect.addEventListener("change", (e) => {
-      state.paletteKey = e.target.value;
-      updatePaletteSwatches();
-      renderApp();
-    });
+      ctx.save();
+      ctx.lineWidth = 1;
 
-    colorStrategySelect.addEventListener("change", (e) => {
-      state.colorStrategy = e.target.value;
-      renderApp();
-    });
+      // Connect Gliosomes to Core and Membrane
+      state.gliosomes.forEach((gliosome) => {
+        // Line to Core
+        ctx.beginPath();
+        ctx.moveTo(gliosome.x, gliosome.y);
+        const cp1x = (gliosome.x + core.x) / 2 + Math.sin(time + gliosome.id) * 20;
+        const cp1y = (gliosome.y + core.y) / 2 + Math.cos(time + gliosome.id) * 20;
+        ctx.quadraticCurveTo(cp1x, cp1y, core.x, core.y);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+        ctx.stroke();
 
-    fusionTypeSelect.addEventListener("change", (e) => {
-      state.fusionType = e.target.value;
-      renderApp();
-    });
+        // Line to Cell Membrane
+        const targetMembranePoint = membranePoints[Math.floor((gliosome.id / state.gliosomes.length) * (membranePoints.length - 1))];
+        if (targetMembranePoint) {
+          ctx.beginPath();
+          ctx.moveTo(gliosome.x, gliosome.y);
+          const cp2x = (gliosome.x + targetMembranePoint.x) / 2 + Math.cos(time * 0.8 + gliosome.id) * 15;
+          const cp2y = (gliosome.y + targetMembranePoint.y) / 2 + Math.sin(time * 0.8 + gliosome.id) * 15;
+          ctx.quadraticCurveTo(cp2x, cp2y, targetMembranePoint.x, targetMembranePoint.y);
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
+          ctx.stroke();
+        }
+      });
 
-    strokeToggle.addEventListener("change", (e) => {
-      state.showStroke = e.target.checked;
-      renderApp();
-    });
+      ctx.restore();
+    }
 
-    strokeWidthRange.addEventListener("input", (e) => {
-      state.strokeWidth = parseFloat(e.target.value);
-      strokeWidthVal.textContent = `${state.strokeWidth.toFixed(1)}px`;
-      renderApp();
-    });
+    // Startup Animation Sequence
+    function initStartupSequence() {
+      const logText = document.getElementById('startup-log-text');
+      const progressBar = document.getElementById('startup-progress');
+      const overlay = document.getElementById('startup-overlay');
 
-    strokeColorSelect.addEventListener("change", (e) => {
-      state.strokeColor = e.target.value;
-      renderApp();
-    });
+      const steps = [
+        { progress: 20, text: "Calibrating microscope optics & focal plane..." },
+        { progress: 45, text: "Initializing Glio Nucleus Hub & microtubule net..." },
+        { progress: 75, text: "Synthesizing Gliosome protein structures..." },
+        { progress: 100, text: "Cellular environment ready. Opening viewfinder..." }
+      ];
 
-    // Fused vs Unfused Toggles
-    modeFusedBtn.addEventListener("click", () => {
-      state.isFused = true;
-      modeFusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm bg-white text-blue-600 transition-all flex items-center space-x-1.5";
-      modeUnfusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1.5";
-      currentModeLabel.textContent = "Color Region Fusion";
-      renderApp();
-    });
+      let stepIdx = 0;
+      const interval = setInterval(() => {
+        if (stepIdx < steps.length) {
+          progressBar.style.width = steps[stepIdx].progress + '%';
+          logText.innerText = steps[stepIdx].text;
+          stepIdx++;
+        } else {
+          clearInterval(interval);
+          setTimeout(() => {
+            overlay.classList.add('hidden');
+            state.isStartupComplete = true;
+          }, 400);
+        }
+      }, 350);
+    }
 
-    modeUnfusedBtn.addEventListener("click", () => {
-      state.isFused = false;
-      modeUnfusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm bg-white text-blue-600 transition-all flex items-center space-x-1.5";
-      modeFusedBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1.5";
-      currentModeLabel.textContent = "Grid Mode (Unfused)";
-      renderApp();
-    });
+    // Main Render Loop
+    function render(currentTime) {
+      const dt = (currentTime - state.lastFrameTime) / 1000;
+      state.lastFrameTime = currentTime;
+      state.time = currentTime / 1000;
 
-    // Initialize App
-    updatePaletteSwatches();
-    renderApp();
+      // Update FPS stats
+      state.frameCount++;
+      if (currentTime - state.fpsTimer >= 1000) {
+        state.fps = state.frameCount;
+        state.frameCount = 0;
+        state.fpsTimer = currentTime;
+        document.getElementById('stat-fps').innerText = state.fps;
+      }
+
+      // Clear Canvas
+      ctx.clearRect(0, 0, state.canvasSize.width, state.canvasSize.height);
+
+      // Render Cytoplasm Granules
+      drawCytoplasmGranules(state.time);
+
+      // Update positions
+      updateGliosomePositions(dt);
+
+      // Render Geometry Layers
+      drawCellMembrane(state.time);
+      drawMicrotubules(state.time);
+      drawGlioCore(state.time);
+
+      // Render Gliosomes
+      state.gliosomes.forEach((g) => drawGliosome(g, state.time));
+
+      // Render Active Vesicle Data Packets
+      updateAndDrawVesicles(dt, state.time);
+
+      requestAnimationFrame(render);
+    }
+
+    // Start App Initialization
+    window.addEventListener('load', () => {
+      initGliosomes();
+      initStartupSequence();
+      requestAnimationFrame(render);
+    });
   </script>
 </body>
 </html>
