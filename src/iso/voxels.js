@@ -1,7 +1,10 @@
 // Voxelgroei vanaf het midden onderin (6-connected, willekeurige volgorde uit de wachtrij) + symmetrie.
-// Overgenomen uit isofusion-studio (MIT).
+// Overgenomen uit isofusion-studio (MIT), met één aanpassing in het groeidoel (zie hieronder).
 
 export const SYMMETRIES = ['none', 'mirror-x', 'mirror-xy', 'rotational'];
+
+// Hoeveel kopieën de symmetrie van elke voxel maakt.
+const COPIES = { none: 1, 'mirror-x': 2, 'mirror-xy': 4, rotational: 4 };
 
 export function makeGrid(N, fill) {
   return Array.from({ length: N }, () => Array.from({ length: N }, () => Array(N).fill(fill)));
@@ -11,7 +14,10 @@ const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1
 
 export function generateVoxels(N, density, symmetry, rng) {
   if (!SYMMETRIES.includes(symmetry)) throw new Error(`Onbekende symmetrie: ${symmetry}`);
-  const target = Math.max(3, Math.floor(N * N * N * density));
+  // Afwijking van isofusion: daar groeit eerst het volle doel en komt de symmetrie erbovenop,
+  // waardoor een gespiegelde vorm bijna de hele kubus vult. Hier groeit alleen het eigen deel,
+  // zodat de vuldichtheid na symmetrie ongeveer `density` blijft.
+  const target = Math.max(3, Math.floor((N * N * N * density) / COPIES[symmetry]));
   const center = Math.floor(N / 2);
   const queue = [[center, center, 0]];
   const visited = new Set([`${center},${center},0`]);
