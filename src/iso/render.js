@@ -1,4 +1,4 @@
-// Isometrische SVG-renderer. Puur: geen DOM, geen Math.random, zelfde invoer = exact dezelfde string.
+// Isometrische SVG-renderer. Puur: geen DOM, geen toeval, zelfde invoer = exact dezelfde string.
 //
 // Basis uit isofusion-studio (MIT): projectie met cos30/sin30, zichtbare vlakken TOP/LEFT/RIGHT,
 // fusie per cluster + vlaktype + vlakdiepte (coplanar) met randen die tegen elkaar wegvallen,
