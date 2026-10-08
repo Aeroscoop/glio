@@ -20,6 +20,8 @@
 - Blokken zonder lijnen ertussen; vlakken in hetzelfde vlak smelten samen; een isometrische tegel als "cel" eronder.
 - Afgevallen: eiwitstructuren 1-op-1, karyogrammen.
 - Algoritme komt uit isofusion-studio (cyrb128+sfc32, voxelgroei, CCL, coplanar fusie, gradient per cluster).
+  Bewuste afwijkingen: groeidoel telt ná symmetrie (dichtheid blijft ~0.55), banden over zichtbare voxels,
+  verborgen vlakken per roosterdriehoek i.p.v. painter's sort. Status dev = losse blokjes met naad in achtergrondkleur.
   Het vorm-algoritme uit het ontwerpbestand (keten + zijblokken) wordt **niet** gebruikt.
 - Stijlbron: `glio-ontwerp-demo.html` (Newsreader + DM Mono, kop met cursieve "Glio", tekstlinks als navigatie,
   zijpaneel 290px, cel met rasterlijnen en membraan, bronkubusjes met stromende stippellijnen,
